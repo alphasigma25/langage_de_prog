@@ -1,14 +1,12 @@
-import Data.Char (isDigit)
-import Data.Maybe (catMaybes, fromMaybe)
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use first" #-}
+
+import Data.Char (isAlpha, isAlphaNum, isDigit)
+import Data.Maybe (fromMaybe)
 
 type Fonction = Expr
 
 type Condition = Expr
-
--- fmap' :: m a -> (a -> b) -> m b
--- apply' :: m a -> m (a -> b) -> m b
--- apply'' :: m a -> m b -> (a -> b -> c) -> m c
--- bind' :: m a -> (a -> m b) -> m b
 
 data Expr
   = Valeur Int
@@ -24,51 +22,73 @@ data Expr
 safeParse :: String -> Maybe Int
 safeParse str = Just $ read str
 
-data Etat
-  = Initial
-  | IntParse String
-  | Noeud (Expr -> Expr) Etat
-  | Text String
-  | Cond Expr Expr Expr
+parser :: String -> Either String (Expr, String)
+parser [] = Left []
+parser list@(c : cs)
+  | isDigit c =
+    let num_suite = parseNum list
+     in Right $ tryExtend (Valeur $ fst num_suite) $ snd num_suite
+  | c == ' ' = parser cs
+  | isAlpha c = uncurry tryExtend <$> uncurry treatText (parseText list)
+  | otherwise = Left list
 
-parser :: String -> Maybe Expr
-parser s = internalParse s Initial
+-- on cherche à étendre l'expression avant de rentrer dans une nouvelle expression
+tryExtend :: Expr -> String -> (Expr, String)
+tryExtend e [] = (e, [])
+tryExtend e list@(c : cs)
+  | c == ' ' = tryExtend e cs
+  | c == '+' =
+    let joker x y = (Addition e x, y)
+     in extractEither (e, list) (uncurry joker) (parser cs)
+  | c == '*' =
+    let joker x y = (Multiplication e x, y)
+     in extractEither (e, list) (uncurry joker) (parser cs)
+  | otherwise = (e, list)
 
--- Est ce que c'est un problème d'avoir des noeuds imbriqués (parseChar
--- doit déplier tout les noeuds pour chaque char)
-internalParse :: String -> Etat -> Maybe Expr
-internalParse [] Initial = Nothing
-internalParse [] (IntParse int_str) = Valeur <$> safeParse int_str
-internalParse [] (Noeud incExpr e) = incExpr <$> internalParse [] e
-internalParse [] (Text str) = Nothing
-internalParse [] (Cond c v f) = Just $ If c v f
-internalParse (x : xs) e = parseChar e x >>= internalParse xs -- on parse x, puis on passe resultat à internalParse
+extractEither :: t -> (b -> t) -> Either a b -> t
+extractEither defaultVal transformer (Right x) = transformer x
+extractEither defaultVal transformer (Left x) = defaultVal
 
-parseChar :: Etat -> Char -> Maybe Etat
-parseChar Initial c
-  | isDigit c = Just $ IntParse [c]
-  | c == ' ' = Just Initial
-  | otherwise = Nothing
-parseChar (IntParse e) c
-  | isDigit c = Just $ IntParse (e ++ [c])
-  | c == '+' = (\x -> Noeud (Addition $ Valeur x) Initial) <$> safeParse e
-  | c == '*' = (\x -> Noeud (Multiplication $ Valeur x) Initial) <$> safeParse e
-  | otherwise = Nothing
-parseChar (Noeud incExpr e) c = Noeud incExpr <$> parseChar e c
-parseChar (Text str) c
-  | c == ' ' = parseText str
-  | otherwise = Nothing
-parseChar (Cond cond v f) c = Nothing
+treatText :: String -> String -> Either String (Expr, String)
+treatText "if" suite = parseIf suite
+treatText txt suite = Left suite
 
-parseText :: String -> Maybe Etat
-parseText str
-  | str == "if" = Nothing
-  | str == "then" = Nothing
-  | str == "else" = Nothing
-  | otherwise = Nothing
+parseIf :: String -> Either String (Expr, String)
+parseIf str =
+  do
+    cond <- parser str
+    thenBloc <- validateText "then" (parseText $ snd cond)
+    vrai <- parser thenBloc
+    elseBloc <- validateText "else" (parseText $ snd vrai)
+    faux <- parser elseBloc
+    pure (If (fst cond) (fst vrai) (fst faux), snd faux)
 
-test :: Maybe Expr
-test = parser "12+35"
+validateText :: String -> (String, String) -> Either String String
+validateText str1 str2 = if str1 == fst str2 then Right $ snd str2 else Left $ snd str2
+
+type NumState = String
+
+parseNum :: String -> (Int, String)
+parseNum = parseNumInternal ""
+
+parseNumInternal :: NumState -> String -> (Int, String)
+parseNumInternal state list@(x : xs)
+  | isDigit x = parseNumInternal (state ++ [x]) xs
+  | otherwise = (read state, list)
+parseNumInternal state [] = (read state, [])
+
+type TextState = String
+
+parseText :: String -> (String, String)
+parseText = parseTextInternal ""
+
+parseTextInternal :: NumState -> String -> (String, String)
+parseTextInternal state list@(x : xs)
+  | isAlphaNum x = parseTextInternal (state ++ [x]) xs
+  | otherwise = (state, list)
+parseTextInternal state [] = (state, [])
+
+test = "if 0 + 5 then 2 + 3 else 5+ 4" -- +if 7 *8 then7 else 8"
 
 evaluer :: [Int] -> Expr -> Int
 evaluer context (Addition e1 e2) = evaluer context e1 + evaluer context e2
