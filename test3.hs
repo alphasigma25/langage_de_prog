@@ -4,8 +4,9 @@
 import Data.Char (isAlpha, isAlphaNum, isDigit)
 import Data.Maybe (fromMaybe)
 
-type Fonction = Expr
+-- séparer le projet en plusieurs fichiers
 
+type Fonction = Expr
 type Condition = Expr
 
 data Expr
@@ -13,7 +14,7 @@ data Expr
   | Fonction [Expr] Fonction
   | Parametre Int
   | If Condition Expr Expr
-  | Addition Expr Expr -- chaque nouvelle fonctionnalité = new constructeur
+  | Addition Expr Expr
   | Multiplication Expr Expr
   | Error
   deriving (Show)
@@ -71,6 +72,8 @@ type NumState = String
 parseNum :: String -> (Int, String)
 parseNum = parseNumInternal ""
 
+-- utiliser le safe parse
+-- gerer les nombres négatifs
 parseNumInternal :: NumState -> String -> (Int, String)
 parseNumInternal state list@(x : xs)
   | isDigit x = parseNumInternal (state ++ [x]) xs
@@ -88,7 +91,9 @@ parseTextInternal state list@(x : xs)
   | otherwise = (state, list)
 parseTextInternal state [] = (state, [])
 
-test = "if 0 + 5 then 2 + 3 else 5+ 4" -- +if 7 *8 then7 else 8"
+-- Régler le bug avec cette chaine de caractère
+test :: String
+test = "if 0 + 5 then 2 + 3 else5 + 4 if 7 *8 then7 else 8"
 
 evaluer :: [Int] -> Expr -> Int
 evaluer context (Addition e1 e2) = evaluer context e1 + evaluer context e2
@@ -114,3 +119,6 @@ fact =
           fact
     )
     (Valeur 1)
+
+factCode :: String
+factCode = "fact x = if x then x * fact (x + (-1)) else 1"
