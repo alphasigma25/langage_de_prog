@@ -24,7 +24,12 @@ data Expr
 safeParse :: String -> Maybe Int
 safeParse str = Just $ read str
 
-data Etat = Initial | IntParse String | Noeud (Expr -> Expr) Etat
+data Etat
+  = Initial
+  | IntParse String
+  | Noeud (Expr -> Expr) Etat
+  | Text String
+  | Cond Expr Expr Expr
 
 parser :: String -> Maybe Expr
 parser s = internalParse s Initial
@@ -35,7 +40,9 @@ internalParse :: String -> Etat -> Maybe Expr
 internalParse [] Initial = Nothing
 internalParse [] (IntParse int_str) = Valeur <$> safeParse int_str
 internalParse [] (Noeud incExpr e) = incExpr <$> internalParse [] e
-internalParse (x : xs) e = parseChar e x >>= internalParse xs
+internalParse [] (Text str) = Nothing
+internalParse [] (Cond c v f) = Just $ If c v f
+internalParse (x : xs) e = parseChar e x >>= internalParse xs -- on parse x, puis on passe resultat à internalParse
 
 parseChar :: Etat -> Char -> Maybe Etat
 parseChar Initial c
@@ -48,6 +55,17 @@ parseChar (IntParse e) c
   | c == '*' = (\x -> Noeud (Multiplication $ Valeur x) Initial) <$> safeParse e
   | otherwise = Nothing
 parseChar (Noeud incExpr e) c = Noeud incExpr <$> parseChar e c
+parseChar (Text str) c
+  | c == ' ' = parseText str
+  | otherwise = Nothing
+parseChar (Cond cond v f) c = Nothing
+
+parseText :: String -> Maybe Etat
+parseText str
+  | str == "if" = Nothing
+  | str == "then" = Nothing
+  | str == "else" = Nothing
+  | otherwise = Nothing
 
 test :: Maybe Expr
 test = parser "12+35"
