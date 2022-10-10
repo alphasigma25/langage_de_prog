@@ -1,6 +1,7 @@
 module Grammaire.Expr where
 
 type Fonction = Expr
+
 type Condition = Expr
 
 data Expr

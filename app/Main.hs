@@ -1,19 +1,18 @@
 module Main where
 
-import qualified MyLib (someFunc)
 import Grammaire.Expr
-    ( Expr(Valeur, If, Multiplication, Fonction, Addition, Parametre),
-      Fonction )
+  ( Expr (Addition, Fonction, If, Multiplication, Parametre, Valeur),
+    Fonction,
+  )
+import Parser.Parser
 
 main :: IO ()
 main = do
-  putStrLn "Hello, Haskell!"
-  MyLib.someFunc
+  print $ parser "1 + 2"
+  pure ()
 
-
-
-test :: [Char]
-test = "if 0 + 5 then 2 + 3 else 5+ 4" -- +if 7 *8 then7 else 8"
+-- test :: [Char]
+-- test = "if 0 + 5 then 2 + 3 else 5+ 4" -- +if 7 *8 then7 else 8"
 
 facths :: Int -> Int
 facths n = if n /= 0 then n * facths n - 1 else 1
