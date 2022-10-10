@@ -4,11 +4,12 @@ import Grammaire.Expr
   ( Expr (Addition, Fonction, If, Multiplication, Parametre, Valeur),
     Fonction,
   )
-import Parser.Parser
+import Parser.Parser (parser)
+import Eval.Eval (evaluer)
 
 main :: IO ()
 main = do
-  print $ parser "1 + 2"
+  print $ evaluer [] <$> parser "1 + 2 * -1"
   pure ()
 
 -- test :: [Char]

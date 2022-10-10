@@ -1,5 +1,5 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# LANGUAGE TupleSections #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 module Parser.Parser where
 
@@ -7,11 +7,11 @@ import Data.Char (isDigit)
 import Grammaire.Expr (Expr (Addition, Multiplication, Valeur))
 import Text.Read (readMaybe)
 
-data ParseError 
-  = IncompleteExpression 
-  | UnrecognizedChar Char 
-  | IntParseError String 
-  deriving Show
+data ParseError
+  = IncompleteExpression
+  | UnrecognizedChar Char
+  | IntParseError String
+  deriving (Show)
 
 type PartialParse x = (String, x)
 
@@ -26,9 +26,9 @@ parseExpr list = parseInfix <$> parseRootExpr list
 parseRootExpr :: String -> ParsingInfos Expr
 parseRootExpr list@(x : xs)
   | x == ' ' = parseRootExpr xs
-  | x == '-' = fmap (fmap $ Valeur . (0-)) (parseDigit "" xs)
+  | x == '-' = fmap (fmap $ Valeur . (0 -)) (parseDigit xs "")
   | x == 'i' = undefined -- 4
-  | isDigit x = fmap (fmap Valeur) (parseDigit "" list)
+  | isDigit x = fmap (fmap Valeur) (parseDigit list "")
   | otherwise = Left $ UnrecognizedChar x
 parseRootExpr [] = Left IncompleteExpression
 
@@ -43,8 +43,8 @@ parseDigit :: String -> String -> ParsingInfos Int
 parseDigit (x : xs) digits
   | isDigit x = parseDigit xs (x : digits)
 parseDigit list digits =
-  let revDigits = reverse digits in
-    (list, ) <$> maybe (Left $ IntParseError revDigits) Right (readMaybeInt $ reverse revDigits)
+  let revDigits = reverse digits
+   in (list,) <$> maybe (Left $ IntParseError revDigits) Right (readMaybeInt $ reverse revDigits)
 
 readMaybeInt :: String -> Maybe Int
 readMaybeInt a = readMaybe a >>= applyFilter
