@@ -1,0 +1,51 @@
+@startuml Gramaire
+
+state Expression #GreenYellow {
+    state "-" as moins #LightCoral
+    [*] --> digit #LightBlue
+    [*] --> moins
+    moins --> digit
+    digit --> digit
+    digit --> [*]
+
+    state "Expression" as end #GreenYellow
+    end --> [*]
+
+    state "Expression" as IfExpression #GreenYellow
+    state "Expression" as ThenExpression #GreenYellow
+    [*] --> if #LightYellow
+    if --> IfExpression
+    IfExpression --> then #LightYellow
+    then --> ThenExpression
+    ThenExpression --> else #LightYellow
+    else --> end
+
+    state "Expression" as source #GreenYellow
+    [*] --> source
+
+    state "+" as plus #LightCoral
+    source --> plus
+    plus --> end
+
+    state "*" as mult #LightCoral
+    source --> mult
+    mult --> end
+
+    state "espace" as espace1 #LightCoral
+    source --> espace1
+    espace1 --> [*]
+
+    state "espace" as espace2 #LightCoral
+    [*] --> espace2
+    espace2 --> end
+}
+
+state Mot #LightYellow {
+    [*] --> alpha #LightBlue
+    alpha -> alpha
+    alpha -> [*]
+}
+
+note "Pour des raisons de lisibilite, les mots\nsont definis comme un seul mot mais\ndevrait etre definis comme une chaine de noeuds" as N1
+
+@enduml
