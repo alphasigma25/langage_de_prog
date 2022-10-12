@@ -3,15 +3,17 @@
 
 module Parser.Parser where
 
-import Data.Char (isDigit, isAlpha, isAlphaNum)
+import Data.Char (isAlpha, isAlphaNum, isDigit)
 import Grammaire.Expr
-import Parser.Helper
+import Parser.Helper (readMaybeInt)
 
 data ParseError
   = IncompleteExpression
   | UnrecognizedChar Char
   | IntParseError String
-  | WrongToken String
+  | IntOverflowError String
+  | WordParseError String
+  | IncorrectWordError String String
   deriving (Show)
 
 type PartialParse x = (String, x) -- ce qui reste à parser + valeur
@@ -44,27 +46,28 @@ readText :: String -> PartialParse String
 readText = readTextInternal ""
 
 readTextInternal :: String -> String -> PartialParse String
-readTextInternal txt (x:xs)
-  | isAlphaNum x = readTextInternal (x:txt) xs
-readTextInternal txt list = (list,  reverse txt)
+readTextInternal txt (x : xs)
+  | isAlphaNum x = readTextInternal (x : txt) xs
+readTextInternal txt list = (list, reverse txt)
 
 parseText :: PartialParse String -> ParsingInfos Expr
 parseText (suite, mot)
   | mot == "if" = parseIf suite
-  | otherwise = Left IncompleteExpression
+  | otherwise = Left $ WordParseError mot
 
 parseIf :: String -> ParsingInfos Expr
 parseIf suite = do
-    (suite1, ifexpr) <- parseExpr suite
-    (suite11, _) <- validate suite1 "then"
-    (suite2, thenexpr) <- parseExpr suite11
-    (suite21, _) <- validate suite2 "else"
-    (suite3, elseexpr) <- parseExpr suite21
-    pure (suite3, If ifexpr thenexpr elseexpr)
+  (suite1, ifexpr) <- parseExpr suite
+  (suite11, _) <- validate suite1 "then"
+  (suite2, thenexpr) <- parseExpr suite11
+  (suite21, _) <- validate suite2 "else"
+  (suite3, elseexpr) <- parseExpr suite21
+  pure (suite3, If ifexpr thenexpr elseexpr)
 
 validate :: String -> String -> ParsingInfos ()
-validate toparse test = let (suite, mot) = readText toparse in
-  if mot == test then Right (suite,()) else Left (WrongToken mot)
+validate toparse test =
+  let (suite, mot) = readText toparse
+   in if mot == test then Right (suite, ()) else Left (IncorrectWordError mot test)
 
 parseDigit :: String -> ParsingInfos Int
 parseDigit = parseDigitInternal ""
@@ -73,5 +76,5 @@ parseDigitInternal :: String -> String -> ParsingInfos Int
 parseDigitInternal digits (x : xs)
   | isDigit x = parseDigitInternal (x : digits) xs
 parseDigitInternal digits list =
-  let revDi = reverse digits in
-  (list,) <$> maybe (Left $ IntParseError revDi) Right (readMaybeInt revDi)
+  let revDi = reverse digits
+   in (list,) <$> either (\x -> Left $ (if x then IntParseError else IntOverflowError) revDi) Right (readMaybeInt revDi)

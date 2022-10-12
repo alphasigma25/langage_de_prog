@@ -2,14 +2,11 @@ module Parser.Helper where
 
 import Text.Read (readMaybe)
 
-readMaybeInt :: String -> Maybe Int
-readMaybeInt a = readMaybe a >>= applyFilter
+readMaybeInt :: String -> Either Bool Int
+readMaybeInt a = maybe (Left True) Right (readMaybe a) >>= applyFilter
 
-applyFilter :: Integer -> Maybe Int
-applyFilter a = if filterIntInteger a then Just $ fromInteger a else Nothing
+applyFilter :: Integer -> Either Bool Int
+applyFilter a = if filterIntInteger a then Right $ fromInteger a else Left False
 
 filterIntInteger :: Integer -> Bool
 filterIntInteger a = (a < toInteger (maxBound :: Int)) && (a > toInteger (minBound :: Int))
-
-maybeToEither :: Maybe a -> b -> Either b a
-maybeToEither a b = maybe (Left b) Right a
