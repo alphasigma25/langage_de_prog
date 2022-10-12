@@ -4,8 +4,8 @@
 module Parser.Parser where
 
 import Data.Char (isDigit)
-import Grammaire.Expr (Expr (Addition, Multiplication, Valeur))
-import Text.Read (readMaybe)
+import Grammaire.Expr
+import Parser.Helper
 
 data ParseError
   = IncompleteExpression
@@ -26,9 +26,9 @@ parseExpr list = parseInfix <$> parseRootExpr list
 parseRootExpr :: String -> ParsingInfos Expr
 parseRootExpr list@(x : xs)
   | x == ' ' = parseRootExpr xs
-  | x == '-' = fmap (fmap $ Valeur . (0 -)) (parseDigit xs "")
+  | x == '-' = fmap (fmap $ Valeur . (0 -)) (parseDigit xs)
   | x == 'i' = undefined -- 4
-  | isDigit x = fmap (fmap Valeur) (parseDigit list "")
+  | isDigit x = fmap (fmap Valeur) (parseDigit list)
   | otherwise = Left $ UnrecognizedChar x
 parseRootExpr [] = Left IncompleteExpression
 
@@ -39,21 +39,11 @@ parseInfix source@(x : xs, expr)
   | x == ' ' = parseInfix (xs, expr)
 parseInfix source = source
 
-parseDigit :: String -> String -> ParsingInfos Int
-parseDigit (x : xs) digits
-  | isDigit x = parseDigit xs (x : digits)
-parseDigit list digits =
-  let revDigits = reverse digits
-   in (list,) <$> maybe (Left $ IntParseError revDigits) Right (readMaybeInt $ reverse revDigits)
+parseDigit :: String -> ParsingInfos Int
+parseDigit = parseDigitInternal ""
 
-readMaybeInt :: String -> Maybe Int
-readMaybeInt a = readMaybe a >>= applyFilter
-
-applyFilter :: Integer -> Maybe Int
-applyFilter a = if filterIntInteger a then Just $ fromInteger a else Nothing
-
-filterIntInteger :: Integer -> Bool
-filterIntInteger a = (a < toInteger (maxBound :: Int)) && (a > toInteger (minBound :: Int))
-
-maybeToEither :: Maybe a -> b -> Either b a
-maybeToEither a b = maybe (Left b) Right a
+parseDigitInternal :: String -> String -> ParsingInfos Int
+parseDigitInternal digits (x : xs)
+  | isDigit x = parseDigitInternal (x : digits) xs
+parseDigitInternal digits list =
+  (list,) <$> maybe (Left $ IntParseError digits) Right (readMaybeInt $ reverse digits)
