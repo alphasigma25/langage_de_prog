@@ -13,9 +13,12 @@ main = do
   putStr "> "
   hFlush stdout
   line <- getLine
-  let ast = parser line
-  print ast
-  print $ evaluer [] <$> ast
+  case parser line of
+    Left err -> print err
+    Right ex -> do
+      print ex
+      print $ evaluer [] ex
+  -- either print (\x -> print x >> print (evaluer [] x)) (parser line)
   main
 
 -- test :: [Char]

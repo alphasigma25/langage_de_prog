@@ -46,4 +46,4 @@ parseDigitInternal :: String -> String -> ParsingInfos Int
 parseDigitInternal digits (x : xs)
   | isDigit x = parseDigitInternal (x : digits) xs
 parseDigitInternal digits list =
-  (list,) <$> maybe (Left $ IntParseError digits) Right (readMaybeInt $ reverse digits)
+  (list,) <$> maybe (Left $ IntParseError $ reverse digits) Right (readMaybeInt $ reverse digits)
