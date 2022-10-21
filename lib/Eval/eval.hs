@@ -2,12 +2,12 @@ module Eval.Eval where
 
 import Grammaire.Expr
 
-evaluer :: [Int] -> Expr -> Int
-evaluer context (Addition e1 e2) = evaluer context e1 + evaluer context e2
-evaluer context (Multiplication e1 e2) = evaluer context e1 * evaluer context e2
-evaluer _ (Valeur e) = e
-evaluer context (Fonction p e2) = evaluer (fmap (evaluer context) p) e2
-evaluer context (Parametre i) = context !! i
-evaluer _ Error = error "Utilisation d'une instruction invalide"
-evaluer context (If cond vrai faux) =
-  if evaluer context cond /= 0 then evaluer context vrai else evaluer context faux
+evaluer :: Expr -> [Int] -> Maybe Int
+evaluer (Addition e1 e2) context = (+) <$> evaluer e1 context <*> evaluer e2 context
+evaluer (Multiplication e1 e2) context = (*) <$> evaluer e1 context <*> evaluer e2 context
+evaluer (Valeur e) _ = Just e
+evaluer (Fonction p e2) context = traverse (`evaluer` context) p >>= evaluer e2
+evaluer (Parametre i) context = Just $ context !! i
+evaluer Error _ = error "Utilisation d'une instruction invalide"
+evaluer (If cond vrai faux) context =
+  evaluer cond context >>= (\test -> evaluer (if test /= 0 then vrai else faux) context)

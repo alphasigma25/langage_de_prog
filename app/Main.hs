@@ -14,7 +14,7 @@ main = do
     Left err -> print err
     Right ex -> do
       print ex
-      print $ evaluer [] ex
+      print $ evaluer ex []
   main
 
 facths :: Int -> Int
