@@ -36,7 +36,7 @@ parser :: String -> Either ParseError Expr
 parser list = parseExpr list >>= (\(txt, expr) -> if txt == "" then Right expr else Left $ OverflowExpression txt)
 
 parseExpr :: String -> ParsingInfos Expr
-parseExpr list = parseInfix <$> parseRootExpr list
+parseExpr list = parseRootExpr list >>= parseInfix
 
 parseRootExpr :: String -> ParsingInfos Expr
 parseRootExpr list@(x : xs)
@@ -47,12 +47,12 @@ parseRootExpr list@(x : xs)
   | otherwise = Left $ UnrecognizedChar x
 parseRootExpr [] = Left IncompleteExpression
 
-parseInfix :: PartialParse Expr -> PartialParse Expr
-parseInfix source@(x : xs, expr)
-  | x == '+' = either (const source) (fmap (Addition expr)) (parseExpr xs)
-  | x == '*' = either (const source) (fmap (Multiplication expr)) (parseExpr xs)
+parseInfix :: PartialParse Expr -> ParsingInfos Expr
+parseInfix (x : xs, expr)
+  | x == '+' = fmap (fmap (Addition expr)) (parseExpr xs)
+  | x == '*' = fmap (fmap (Multiplication expr)) (parseExpr xs)
   | x == ' ' = parseInfix (xs, expr)
-parseInfix source = source
+parseInfix source = Right source
 
 readText :: String -> PartialParse String
 readText = readTextInternal ""
