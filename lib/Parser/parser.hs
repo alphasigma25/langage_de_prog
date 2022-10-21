@@ -1,3 +1,4 @@
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
@@ -14,14 +15,25 @@ data ParseError
   | IntOverflowError String
   | WordParseError String
   | IncorrectWordError String String
-  deriving (Show)
+  | OverflowExpression String
+
+instance Show ParseError where
+  show :: ParseError -> String
+  show IncompleteExpression = "Incomplete expression"
+  show (OverflowExpression suite) = "Overflow expression : *" ++ suite ++ "*"
+  show (UnrecognizedChar a) = "Invalid Char : " ++ a : ""
+  show (IntParseError txt) = "Int parse error : " ++ txt
+  show (IntOverflowError txt) = "IntOverflowError : " ++ txt
+  show (WordParseError txt) = "Unrecognized word : " ++ txt
+  show (IncorrectWordError txt txt2) =
+    "Unexpected word : " ++ txt ++ " instead of " ++ txt2
 
 type PartialParse x = (String, x) -- ce qui reste à parser + valeur
 
 type ParsingInfos x = Either ParseError (PartialParse x)
 
 parser :: String -> Either ParseError Expr
-parser list = parseExpr list >>= (\x -> if fst x == "" then Right (snd x) else Left IncompleteExpression)
+parser list = parseExpr list >>= (\(txt, expr) -> if txt == "" then Right expr else Left $ OverflowExpression txt)
 
 parseExpr :: String -> ParsingInfos Expr
 parseExpr list = parseInfix <$> parseRootExpr list
