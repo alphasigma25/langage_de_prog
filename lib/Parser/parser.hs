@@ -8,67 +8,68 @@ import Data.Char (isAlpha, isAlphaNum, isDigit)
 import Grammaire.Expr
 import Parser.Helper (readMaybeInt)
 import Parser.RevString (RevString, add)
+import Parser.Zip
 
 data ParseError
-  = IncompleteExpression
-  | UnrecognizedChar Char
-  | IntParseError String
-  | IntOverflowError String
-  | WordParseError String
-  | IncorrectWordError String String
-  | OverflowExpression String
+  = IncompleteExpression String
+  | UnrecognizedChar String Char String
+  | IntParseError String Parsed
+  | IntOverflowError String Parsed
+  | WordParseError String String String
+  | IncorrectWordError String String String String
+  | OverflowExpression Parsed
 
 instance Show ParseError where
   show :: ParseError -> String
-  show IncompleteExpression = "Incomplete expression"
-  show (OverflowExpression suite) = "Overflow expression : *" ++ suite ++ "*"
-  show (UnrecognizedChar a) = "Invalid Char : " ++ a : ""
-  show (IntParseError txt) = "Int parse error : " ++ txt
-  show (IntOverflowError txt) = "IntOverflowError : " ++ txt
-  show (WordParseError txt) = "Unrecognized word : " ++ txt
-  show (IncorrectWordError txt txt2) =
-    "Unexpected word : " ++ txt ++ " instead of " ++ txt2
+  show (IncompleteExpression p) = "Incomplete expression : " ++ p
+  show (OverflowExpression p) = "Overflow expression : " ++ show p
+  show (UnrecognizedChar a b c) = "Invalid Char : " ++ a ++ '*' : b : '*' : c
+  show (IntParseError old p) = "IntParseError : " ++ old ++ '*' : show p -- Normalement ce cas ne devrait jamais arriver
+  show (IntOverflowError old p) = "IntOverflowError : " ++ old ++ '*' : show p
+  show (WordParseError old word suite) = "Unrecognized word : " ++ old ++ '*' : word ++ '*' : suite
+  show (IncorrectWordError expected received past future) =
+    "Unexpected word : " ++ received ++ " instead of " ++ expected ++ " in " ++ past ++ '*' : received ++ '*' : future
 
-type PartialParse x = (String, x) -- ce qui reste à parser + valeur
+type PartialParse x = (Parsed, x)
 
 type ParsingInfos x = Either ParseError (PartialParse x)
 
 parser :: String -> Either ParseError Expr
-parser list = parseExpr list >>= (\(txt, expr) -> if txt == "" then Right expr else Left $ OverflowExpression txt)
+parser list = parseExpr (createParse list) >>= (\(text, result) -> if incomplete text then Left $ OverflowExpression text else Right result)
 
-parseExpr :: String -> ParsingInfos Expr
+parseExpr :: Parsed -> ParsingInfos Expr
 parseExpr list = parseRootExpr list >>= parseInfix
 
-parseRootExpr :: String -> ParsingInfos Expr
-parseRootExpr list@(x : xs)
-  | x == ' ' = parseRootExpr xs
-  | x == '-' = fmap (fmap $ Valeur . (0 -)) (parseDigit xs)
-  | isAlpha x = parseText $ readText list
+parseRootExpr :: Parsed -> ParsingInfos Expr
+parseRootExpr list@(CharParsed p@(old, x, xs))
+  | x == ' ' = parseRootExpr $ next p
+  | x == '-' = fmap (fmap $ Valeur . (0 -)) (parseDigit $ next p)
+  | isAlpha x = parseText old $ readText list
   | isDigit x = fmap (fmap Valeur) (parseDigit list)
-  | otherwise = Left $ UnrecognizedChar x
-parseRootExpr [] = Left IncompleteExpression
+  | otherwise = Left $ UnrecognizedChar (show old) x xs
+parseRootExpr (EndParsed txt) = Left $ IncompleteExpression $ show txt
 
 parseInfix :: PartialParse Expr -> ParsingInfos Expr
-parseInfix (x : xs, expr)
-  | x == '+' = fmap (fmap (Addition expr)) (parseExpr xs)
-  | x == '*' = fmap (fmap (Multiplication expr)) (parseExpr xs)
-  | x == ' ' = parseInfix (xs, expr)
+parseInfix (CharParsed p@(_, x, _), expr)
+  | x == '+' = fmap (fmap (Addition expr)) (parseExpr $ next p)
+  | x == '*' = fmap (fmap (Multiplication expr)) (parseExpr $ next p)
+  | x == ' ' = parseInfix (next p, expr)
 parseInfix source = Right source
 
-readText :: String -> PartialParse String
+readText :: Parsed -> PartialParse String
 readText = readTextInternal mempty
 
-readTextInternal :: RevString -> String -> PartialParse String
-readTextInternal txt (x : xs)
-  | isAlphaNum x = readTextInternal (add x txt) xs
+readTextInternal :: RevString -> Parsed -> PartialParse String
+readTextInternal txt (CharParsed p@(_, x, _))
+  | isAlphaNum x = readTextInternal (add x txt) $ next p
 readTextInternal txt list = (list, show txt)
 
-parseText :: PartialParse String -> ParsingInfos Expr
-parseText (suite, mot)
+parseText :: RevString -> PartialParse String -> ParsingInfos Expr
+parseText old (suite, mot)
   | mot == "if" = parseIf suite
-  | otherwise = Left $ WordParseError mot
+  | otherwise = Left $ WordParseError (show old) mot $ futurePart suite
 
-parseIf :: String -> ParsingInfos Expr
+parseIf :: Parsed -> ParsingInfos Expr
 parseIf suite = do
   (suite1, ifexpr) <- parseExpr suite
   (suite11, _) <- validate suite1 "then"
@@ -77,17 +78,19 @@ parseIf suite = do
   (suite3, elseexpr) <- parseExpr suite21
   pure (suite3, If ifexpr thenexpr elseexpr)
 
-validate :: String -> String -> ParsingInfos ()
+validate :: Parsed -> String -> ParsingInfos ()
 validate toparse test =
   let (suite, mot) = readText toparse
-   in if mot == test then Right (suite, ()) else Left (IncorrectWordError mot test)
+   in if mot == test then Right (suite, ()) else Left $ IncorrectWordError test mot (show $ parsedPart toparse) $ futurePart suite
 
-parseDigit :: String -> ParsingInfos Int
-parseDigit = parseDigitInternal mempty
+parseDigit :: Parsed -> ParsingInfos Int
+parseDigit suite =
+  let old = parsedPart suite
+   in let remergeContext (a, b) = (merge a old, b)
+       in remergeContext <$> parseDigitInternal old mempty (createParse $ futurePart suite)
 
-parseDigitInternal :: RevString -> String -> ParsingInfos Int
-parseDigitInternal digits (x : xs)
-  | isDigit x = parseDigitInternal (add x digits) xs
-parseDigitInternal digits list =
-  let revDi = show digits
-   in (list,) <$> either (\x -> Left $ (if x then IntParseError else IntOverflowError) revDi) Right (readMaybeInt revDi)
+parseDigitInternal :: RevString -> RevString -> Parsed -> ParsingInfos Int
+parseDigitInternal old digits (CharParsed p@(_, x, _))
+  | isDigit x = parseDigitInternal old (add x digits) $ next p
+parseDigitInternal old digits list =
+  (list,) <$> either (\x -> Left $ (if x then IntParseError else IntOverflowError) (show old) list) Right (readMaybeInt $ show digits)
