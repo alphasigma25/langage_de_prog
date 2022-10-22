@@ -1,6 +1,6 @@
 module Main where
 
-import Eval.Eval (evaluer)
+import Eval.Eval (evaluerProg)
 import Grammaire.Expr
 import Parser.Parser (parser)
 
@@ -13,7 +13,7 @@ main = do
     Left err -> print err
     Right ex -> do
       print ex
-      print $ evaluer ex []
+      print $ evaluerProg ex
   main
 
 facths :: Int -> Int
@@ -27,6 +27,6 @@ fact =
         (Parametre 0)
         $ Fonction
           [Addition (Parametre 0) (Valeur (-1))]
-          fact
+          0
     )
     (Valeur 1)

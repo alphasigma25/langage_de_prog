@@ -4,12 +4,12 @@
 
 module Parser.Parser where
 
-import qualified Text.Show
 import Data.Char (isAlpha, isAlphaNum, isDigit)
 import Grammaire.Expr
 import Parser.Helper (readMaybeInt)
 import Parser.RevString (RevString, add)
 import Parser.Zip
+import qualified Text.Show
 
 data ParseError
   = IncompleteExpression String
@@ -35,8 +35,8 @@ type PartialParse x = (Parsed, x)
 
 type ParsingInfos x = Either ParseError (PartialParse x)
 
-parser :: Text -> Either ParseError Expr
-parser list = parseExpr (createParse $ toString list) >>= (\(text, result) -> if incomplete text then Left $ OverflowExpression text else Right result)
+parser :: Text -> Either ParseError Program
+parser list = parseExpr (createParse $ toString list) >>= (\(text, result) -> if incomplete text then Left $ OverflowExpression text else Right [result])
 
 parseExpr :: Parsed -> ParsingInfos Expr
 parseExpr list = parseRootExpr list >>= parseInfix
