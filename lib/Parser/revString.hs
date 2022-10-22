@@ -2,6 +2,8 @@
 
 module Parser.RevString where
 
+import qualified Text.Show
+
 newtype RevString = RevString String
 
 instance Show RevString where
@@ -10,7 +12,7 @@ instance Show RevString where
 
 instance Semigroup RevString where
   (<>) :: RevString -> RevString -> RevString
-  (<>) (RevString first) (RevString second) = RevString $ second ++ first
+  (<>) (RevString s1) (RevString s2) = RevString $ s2 ++ s1
 
 instance Monoid RevString where
   mempty :: RevString

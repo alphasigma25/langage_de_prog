@@ -1,7 +1,5 @@
 module Parser.Helper where
 
-import Text.Read (readMaybe)
-
 readMaybeInt :: String -> Either Bool Int
 readMaybeInt a = maybe (Left True) Right (readMaybe a) >>= applyFilter
 

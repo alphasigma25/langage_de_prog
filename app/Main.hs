@@ -3,7 +3,6 @@ module Main where
 import Eval.Eval (evaluer)
 import Grammaire.Expr
 import Parser.Parser (parser)
-import System.IO (hFlush, stdout)
 
 main :: IO ()
 main = do

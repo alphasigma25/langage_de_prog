@@ -3,6 +3,8 @@
 module Parser.Zip where
 
 import Parser.RevString (RevString, add)
+import qualified Text.Show
+
 
 data Parsed = CharParsed (RevString, Char, String) | EndParsed RevString
 

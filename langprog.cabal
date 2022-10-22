@@ -55,6 +55,11 @@ library
     Grammaire.Expr
     Parser.Parser
 
+  mixins:
+    base hiding (Prelude),
+    relude (Relude as Prelude),
+    relude
+
   -- Modules included in this library but not exported.
   other-modules:
     Parser.Helper
@@ -64,7 +69,9 @@ library
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
   -- Other library packages from which modules are imported.
-  build-depends:    base
+  build-depends:
+    , base
+    , relude
 
   -- Directories containing source files.
   hs-source-dirs:   lib
@@ -87,6 +94,12 @@ executable langprog
   build-depends:
     , base
     , langprog
+    , relude
+
+  mixins:
+    base hiding (Prelude),
+    relude (Relude as Prelude),
+    relude
 
   -- Directories containing source files.
   hs-source-dirs:   app
