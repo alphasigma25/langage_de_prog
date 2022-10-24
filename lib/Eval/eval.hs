@@ -1,11 +1,11 @@
 module Eval.Eval where
 
-import Grammaire.Expr
+import Grammaire.Expr (Expr (..), Fonction, Program)
 
 type Context = ([Int], [Fonction])
 
 evaluerProg :: Program -> Maybe Int
-evaluerProg list@(x:_) = evaluer x ([], list)
+evaluerProg list@(x : _) = evaluer x ([], list)
 evaluerProg [] = Nothing
 
 evaluer :: Expr -> Context -> Maybe Int

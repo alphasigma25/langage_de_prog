@@ -1,7 +1,7 @@
 module Main where
 
 import Eval.Eval (evaluerProg)
-import Grammaire.Expr
+import Grammaire.Expr (Expr (..), Fonction)
 import Parser.Parser (parser)
 
 main :: IO ()

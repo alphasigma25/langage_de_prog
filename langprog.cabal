@@ -65,6 +65,8 @@ library
     Parser.Helper
     Parser.RevString
     Parser.Zip
+    Parser.CommonParser
+    Parser.ExpressionParser
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
