@@ -7,6 +7,7 @@ module Parser.Parser where
 import Data.Char (isAlpha, isAlphaNum, isDigit)
 import Grammaire.Expr
 import Parser.Helper (readMaybeInt)
+import Parser.RevString (RevString, addRS)
 
 data ParseError
   = IncompleteExpression
@@ -68,12 +69,12 @@ parseExpr list = parseRootExpr list >>= parseInfix
               pure (suite3, If ifexpr thenexpr elseexpr)
 
 readText :: String -> PartialParse String
-readText = readTextInternal ""
+readText = readTextInternal mempty
   where
-    readTextInternal :: String -> String -> PartialParse String
+    readTextInternal :: RevString -> String -> PartialParse String
     readTextInternal txt (x : xs)
-      | isAlphaNum x = readTextInternal (x : txt) xs
-    readTextInternal txt list = (list, reverse txt)
+      | isAlphaNum x = readTextInternal (addRS x txt) xs
+    readTextInternal txt list = (list, show txt)
 
 validate :: String -> String -> ParsingInfos ()
 validate toparse test =
@@ -81,11 +82,11 @@ validate toparse test =
    in if mot == test then Right (suite, ()) else Left (WrongToken mot test)
 
 parseDigit :: String -> ParsingInfos Int
-parseDigit = parseDigitInternal ""
+parseDigit = parseDigitInternal mempty
   where
-    parseDigitInternal :: String -> String -> ParsingInfos Int
+    parseDigitInternal :: RevString -> String -> ParsingInfos Int
     parseDigitInternal digits (x : xs)
-      | isDigit x = parseDigitInternal (x : digits) xs
+      | isDigit x = parseDigitInternal (addRS x digits) xs
     parseDigitInternal digits list =
-      let revDi = reverse digits
+      let revDi = show digits
        in (list,) <$> either (\x -> Left $ (if x then IntOverflowError else IntParseError) revDi) Right (readMaybeInt revDi)
