@@ -1,3 +1,4 @@
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
@@ -9,17 +10,29 @@ import Parser.Helper (readMaybeInt)
 
 data ParseError
   = IncompleteExpression
+  | Overflow String
+  | UnrecognisedToken String
   | UnrecognizedChar Char
   | IntParseError String
-  | WrongToken String
-  deriving (Show)
+  | IntOverflowError String
+  | WrongToken String String
+
+instance Show ParseError where
+  show :: ParseError -> String
+  show IncompleteExpression = "Incomplete expression"
+  show (Overflow str) = "Overflow : " ++ str
+  show (UnrecognisedToken tok) = "Unrecognised token : " ++ tok
+  show (UnrecognizedChar c) = "Unrecognised char : " ++ [c]
+  show (IntParseError str) = "Error while parsing int : " ++ str
+  show (IntOverflowError str) = "Int overflow while parsing int : " ++ str
+  show (WrongToken word test) = "Wrong token. Recieved : " ++ word ++ " Expected : " ++ test
 
 type PartialParse x = (String, x) -- ce qui reste à parser + valeur
 
 type ParsingInfos x = Either ParseError (PartialParse x)
 
 parser :: String -> Either ParseError Expr
-parser list = parseExpr list >>= (\x -> if fst x == "" then Right (snd x) else Left IncompleteExpression)
+parser list = parseExpr list >>= (\(reste, parsed) -> if reste == "" then Right parsed else Left $ Overflow reste)
 
 parseExpr :: String -> ParsingInfos Expr
 parseExpr list = parseInfix <$> parseRootExpr list
@@ -43,7 +56,7 @@ parseExpr list = parseInfix <$> parseRootExpr list
         parseText :: PartialParse String -> ParsingInfos Expr
         parseText (suite, mot)
           | mot == "if" = parseIf suite
-          | otherwise = Left IncompleteExpression
+          | otherwise = Left $ UnrecognisedToken mot
           where
             parseIf :: String -> ParsingInfos Expr
             parseIf suite0 = do
@@ -65,7 +78,7 @@ readText = readTextInternal ""
 validate :: String -> String -> ParsingInfos ()
 validate toparse test =
   let (suite, mot) = readText toparse
-   in if mot == test then Right (suite, ()) else Left (WrongToken mot)
+   in if mot == test then Right (suite, ()) else Left (WrongToken mot test)
 
 parseDigit :: String -> ParsingInfos Int
 parseDigit = parseDigitInternal ""
@@ -75,4 +88,4 @@ parseDigit = parseDigitInternal ""
       | isDigit x = parseDigitInternal (x : digits) xs
     parseDigitInternal digits list =
       let revDi = reverse digits
-       in (list,) <$> maybe (Left $ IntParseError revDi) Right (readMaybeInt revDi)
+       in (list,) <$> either (\x -> Left $ (if x then IntOverflowError else IntParseError) revDi) Right (readMaybeInt revDi)
