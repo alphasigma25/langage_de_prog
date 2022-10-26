@@ -1,0 +1,107 @@
+@startuml Gramaire2
+
+state Program {
+    state "Fonction" as func #OrangeRed
+    state "Expression" as expr #GreenYellow
+    state "espace" as space2 #LightCoral
+    [*] --> space2
+    space2 --> space2
+    space2 --> func
+    func --> func
+    func --> expr
+    expr --> [*]
+}
+
+state Fonction #OrangeRed {
+    state "espace" as space1 #LightCoral
+    state "AlphaNum" as al1 #LightYellow
+    [*] --> al1
+    al1 --> space1
+    space1 --> space1
+    space1 --> Param
+    space1 --> egal
+    al1 --> egal
+
+    state Param {
+        state "AlphaNum" as al2 #LightYellow
+        state "espace" as space3 #LightCoral
+        [*] --> al2
+        al2 --> space3
+        space3 --> space3
+        space3 --> [*]
+        note left of space3 : Normalement le dernier\nparam n'as pas besoin\nd'un espace mais laisse\npour raison de simplicite
+    }
+
+    state "=" as egal #LightCoral
+    state "Expression" as endExpr #GreenYellow
+
+    Param --> Param
+    Param --> egal
+    egal --> endExpr
+}
+
+state AlphaNum #LightYellow {
+    state "alpha" as alpha2
+    [*] --> alpha2 #LightBlue
+    alpha2 --> alphaNum #LightBlue
+    alpha2 --> [*]
+    alphaNum --> alphaNum
+    alphaNum --> [*]
+}
+
+state Expression #GreenYellow {
+    state "-" as moins #LightCoral
+    [*] --> digit #LightBlue
+    [*] --> moins
+    moins --> digit
+    digit --> digit
+    digit --> [*]
+
+    state "Expression" as end #GreenYellow
+    end --> [*]
+
+    state "Expression" as IfExpression #GreenYellow
+    state "Expression" as ThenExpression #GreenYellow
+    [*] --> if #LightYellow
+    if --> IfExpression
+    IfExpression --> then #LightYellow
+    then --> ThenExpression
+    ThenExpression --> else #LightYellow
+    else --> end
+
+    state "Expression" as source #GreenYellow
+    [*] --> source
+
+    state "+" as plus #LightCoral
+    source --> plus
+    plus --> end
+
+    state "*" as mult #LightCoral
+    source --> mult
+    mult --> end
+
+    state "espace" as espace1 #LightCoral
+    source --> espace1
+    espace1 --> [*]
+
+    state "espace" as espace2 #LightCoral
+    [*] --> espace2
+    espace2 --> end
+
+    state "AlphaNum" as al #LightYellow
+    state "Expression" as param #GreenYellow
+    [*] --> al
+    al --> [*]
+    al --> param
+    param --> param : N
+    param --> [*]
+
+    note left of al : Cela peut representer un\nargument de la fonction,\nun appel de fonction ou un let
+
+    note right of param : Pour des raison des simplicite,\non a separer l'expression des param\ndes autres expressions terminales
+}
+
+
+[*] --> Program
+
+@enduml
