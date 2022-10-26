@@ -4,12 +4,9 @@ import Text.Read (readMaybe)
 
 readMaybeInt :: String -> Maybe Int
 readMaybeInt a = readMaybe a >>= applyFilter
-
-applyFilter :: Integer -> Maybe Int
-applyFilter a = if filterIntInteger a then Just $ fromInteger a else Nothing
-
-filterIntInteger :: Integer -> Bool
-filterIntInteger a = (a < toInteger (maxBound :: Int)) && (a > toInteger (minBound :: Int))
-
-maybeToEither :: Maybe a -> b -> Either b a
-maybeToEither a b = maybe (Left b) Right a
+  where
+    applyFilter :: Integer -> Maybe Int
+    applyFilter b = if filterIntInteger b then Just $ fromInteger b else Nothing
+      where
+        filterIntInteger :: Integer -> Bool
+        filterIntInteger c = (c < toInteger (maxBound :: Int)) && (c > toInteger (minBound :: Int))

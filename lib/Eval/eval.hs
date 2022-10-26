@@ -1,6 +1,6 @@
 module Eval.Eval where
 
-import Grammaire.Expr
+import Grammaire.Expr (Expr (..))
 
 evaluer :: [Int] -> Expr -> Int
 evaluer context (Addition e1 e2) = evaluer context e1 + evaluer context e2
