@@ -1,22 +1,24 @@
 {-# LANGUAGE InstanceSigs #-}
 
-module Parser.RevString where
+module RevString (RevList, toListRev, toTextRev, add, RevString) where
 
-import qualified Text.Show
+newtype RevList x = RevList [x]
 
-newtype RevString = RevString String
+type RevString = RevList Char
 
-instance Show RevString where
-  show :: RevString -> String
-  show (RevString s) = reverse s
+instance Semigroup (RevList x) where
+  (<>) :: RevList x -> RevList x -> RevList x
+  (<>) (RevList s1) (RevList s2) = RevList $ s2 ++ s1
 
-instance Semigroup RevString where
-  (<>) :: RevString -> RevString -> RevString
-  (<>) (RevString s1) (RevString s2) = RevString $ s2 ++ s1
+instance Monoid (RevList x) where
+  mempty :: RevList x
+  mempty = RevList mempty
 
-instance Monoid RevString where
-  mempty :: RevString
-  mempty = RevString ""
+toListRev :: RevList a -> [a]
+toListRev (RevList s) = reverse s
 
-add :: Char -> RevString -> RevString
-add car (RevString s) = RevString $ car : s
+toTextRev :: RevList Char -> Text
+toTextRev (RevList s) = toText $ reverse s
+
+add :: x -> RevList x -> RevList x
+add car (RevList s) = RevList $ car : s

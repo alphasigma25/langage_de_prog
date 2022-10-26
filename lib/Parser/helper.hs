@@ -1,10 +1,9 @@
-module Parser.Helper where
+module Helper where
 
 readMaybeInt :: String -> Either Bool Int
-readMaybeInt a = maybe (Left True) Right (readMaybe a) >>= applyFilter
-
-applyFilter :: Integer -> Either Bool Int
-applyFilter a = if filterIntInteger a then Right $ fromInteger a else Left False
-
-filterIntInteger :: Integer -> Bool
-filterIntInteger a = (a < toInteger (maxBound :: Int)) && (a > toInteger (minBound :: Int))
+readMaybeInt a = maybeToRight True (readMaybe a) >>= applyFilter
+  where
+    applyFilter :: Integer -> Either Bool Int
+    applyFilter filt =
+      let valid = (filt < toInteger (maxBound :: Int)) && (filt > toInteger (minBound :: Int))
+       in if valid then pure $ fromInteger filt else Left False

@@ -1,0 +1,13 @@
+cradle:
+  cabal:
+    - path: "lib/Grammaire"
+      component: "langprog:lib:grammaire"
+
+    - path: "lib/Eval"
+      component: "langprog:lib:eval"
+
+    - path: "lib/Parser"
+      component: "langprog:lib:parser"
+
+    - path: "app"
+      component: "langprog:exe:customRepl"

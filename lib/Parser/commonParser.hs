@@ -1,26 +1,21 @@
-{-# LANGUAGE InstanceSigs #-}
+module CommonParser where
 
-module Parser.CommonParser where
+import Data.Char (isAlphaNum)
+import ParsingError (ParseError)
+import RevString (RevString, add, toListRev)
+import Zip (Parsed (CharParsed), next)
 
-import Parser.Zip (Parsed)
-import qualified Text.Show
+type PartialParse x = (Parsed, x)
 
-data ParseError
-  = IncompleteExpression String
-  | UnrecognizedChar String Char String
-  | IntParseError String Parsed
-  | IntOverflowError String Parsed
-  | WordParseError String String String
-  | IncorrectWordError String String String String
-  | OverflowExpression Parsed
+type MaybeParse x = Either ParseError (PartialParse x)
 
-instance Show ParseError where
-  show :: ParseError -> String
-  show (IncompleteExpression p) = "Incomplete expression : " ++ p
-  show (OverflowExpression p) = "Overflow expression : " ++ show p
-  show (UnrecognizedChar a b c) = "Invalid Char : " ++ a ++ '*' : b : '*' : c
-  show (IntParseError old p) = "IntParseError : " ++ old ++ '*' : show p -- Normalement ce cas ne devrait jamais arriver
-  show (IntOverflowError old p) = "IntOverflowError : " ++ old ++ '*' : show p
-  show (WordParseError old word suite) = "Unrecognized word : " ++ old ++ '*' : word ++ '*' : suite
-  show (IncorrectWordError expected received past future) =
-    "Unexpected word : " ++ received ++ " instead of " ++ expected ++ " in " ++ past ++ '*' : received ++ '*' : future
+readText :: Parsed -> PartialParse String
+readText = readTextInternal mempty
+  where
+    readTextInternal :: RevString -> Parsed -> PartialParse String
+    readTextInternal txt (CharParsed p@(_, x, _))
+      | isAlphaNum x = readTextInternal (add x txt) $ next p
+    readTextInternal txt list = (list, toListRev txt)
+
+isWhitespace :: Char -> Bool
+isWhitespace x = x == '\n' || x == ' '

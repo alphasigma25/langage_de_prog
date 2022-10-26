@@ -1,32 +1,53 @@
 module Main where
 
-import Eval.Eval (evaluerProg)
-import Grammaire.Expr (Expr (..), Fonction)
-import Parser.Parser (parser)
+import Data.Map as M (empty)
+import Eval (evaluer)
+import Expr
+import Parser (parseExpr, parseFunc)
+import ParsingError (ParseError, notAFuncError)
 
 main :: IO ()
-main = do
-  putStr "> "
-  hFlush stdout
-  line <- getLine
-  case parser line of
-    Left err -> print err
-    Right ex -> do
-      print ex
-      print $ evaluerProg ex
-  main
+main = internalMain M.empty
+  where
+    internalMain :: Program -> IO ()
+    internalMain ct = do
+      putStr "> "
+      hFlush stdout
+      line <- getLine
+      let (execution, ctx) = printResult $ tryParseLine (toString line)
+      execution
+      internalMain ctx
+      where
+        printResult :: Either ParseError (Either Program Expr) -> (IO (), Program)
+        printResult (Right (Left prg)) = (pass, prg)
+        printResult (Right (Right expr)) = (print (evaluer expr ct), ct)
+        printResult (Left err) = (print err, ct)
+
+        tryParseLine :: String -> Either ParseError (Either Program Expr)
+        tryParseLine line = tryParseExpr (parseFunc ct line)
+          where
+            tryParseExpr :: Either ParseError Program -> Either ParseError (Either Program Expr)
+            tryParseExpr (Right x) = pure $ Left x
+            tryParseExpr (Left x)
+              | notAFuncError x = pure <$> parseExpr ct line
+              | otherwise = Left x
 
 facths :: Int -> Int
 facths n = if n /= 0 then n * facths n - 1 else 1
 
-fact :: Fonction
+fact :: FonctionCode
 fact =
-  If
-    (Parametre 0)
-    ( Multiplication
-        (Parametre 0)
-        $ Fonction
-          [Addition (Parametre 0) (Valeur (-1))]
-          0
-    )
-    (Valeur 1)
+  FonctionCode $
+    If
+      (Parametre $ ParamIndex 0)
+      ( Operation
+          OpMult
+          (Parametre $ ParamIndex 0)
+          $ Fonction
+            [Operation OpAdd (Parametre $ ParamIndex 0) (Valeur (NumValeur $ -1))]
+            (FonctionName $ toText "fact")
+      )
+      (Valeur $ NumValeur 1)
+
+factSource :: String
+factSource = "fact x = if x then x * fact x - 1 else 1. fact 10"

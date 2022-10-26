@@ -1,16 +1,15 @@
 {-# LANGUAGE InstanceSigs #-}
 
-module Parser.Zip where
+module Zip where
 
-import Parser.RevString (RevString, add)
+import RevString (RevString, add, toListRev)
 import qualified Text.Show
-
 
 data Parsed = CharParsed (RevString, Char, String) | EndParsed RevString
 
 instance Show Parsed where
   show :: Parsed -> String
-  show p = show (parsedPart p) ++ '*' : futurePart p
+  show p = toListRev (parsedPart p) ++ '*' : futurePart p
 
 parsedPart :: Parsed -> RevString
 parsedPart (CharParsed (old, _, _)) = old
@@ -18,7 +17,7 @@ parsedPart (EndParsed old) = old
 
 futurePart :: Parsed -> String
 futurePart (CharParsed (_, x, xs)) = x : xs
-futurePart (EndParsed _) = []
+futurePart (EndParsed _) = mempty
 
 incomplete :: Parsed -> Bool
 incomplete CharParsed {} = True

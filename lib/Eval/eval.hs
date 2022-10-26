@@ -1,25 +1,30 @@
-module Eval.Eval where
+module Eval (evaluer) where
 
-import Grammaire.Expr (Expr (..), Fonction, Program)
+import Data.Map as M ((!?))
+import EvalHelper (Context, ParamList (ParamList), check, evaluerOp, readParam)
+import Expr
 
-type Context = ([Int], [Fonction])
-
-evaluerProg :: Program -> Maybe Int
-evaluerProg list@(x : _) = evaluer x ([], list)
-evaluerProg [] = Nothing
-
-evaluer :: Expr -> Context -> Maybe Int
-evaluer (Addition e1 e2) context = (+) <$> evaluer e1 context <*> evaluer e2 context
-evaluer (Multiplication e1 e2) context = (*) <$> evaluer e1 context <*> evaluer e2 context
-evaluer (Valeur e) _ = Just e
-evaluer (Fonction p e2) context@(_, funcs) =
-  ((,) <$> tryGetElem e2 funcs <*> traverse (`evaluer` context) p) >>= (\(x, y) -> evaluer x (y, funcs))
-evaluer (Parametre i) (params, _) = tryGetElem i params
-evaluer Error _ = error $ toText "Utilisation d'une instruction invalide"
-evaluer (If cond vrai faux) context =
-  evaluer cond context >>= (\test -> evaluer (if test /= 0 then vrai else faux) context)
-
-tryGetElem :: Int -> [a] -> Maybe a
-tryGetElem _ [] = Nothing
-tryGetElem 0 (x : _) = Just x
-tryGetElem p (_ : xs) = tryGetElem (p - 1) xs
+evaluer :: Expr -> Program -> Maybe NumValeur
+evaluer expr ctx = internalEvaluer expr (ParamList mempty, ctx)
+  where
+    internalEvaluer :: Expr -> Context -> Maybe NumValeur
+    internalEvaluer (Operation op e1 e2) context = do
+      v1 <- internalEvaluer e1 context
+      v2 <- internalEvaluer e2 context
+      evaluerOp op v1 v2
+    internalEvaluer (Valeur e) _ = pure e
+    internalEvaluer (Parametre i) (params, _) = readParam params i
+    internalEvaluer Error _ = Nothing
+    internalEvaluer (If cond vrai faux) context =
+      internalEvaluer cond context >>= (\test -> internalEvaluer (if check test then vrai else faux) context)
+    internalEvaluer (Fonction p e2) context@(_, funcs) =
+      do
+        func <- funcs M.!? e2
+        param <- traverse (`internalEvaluer` context) p
+        evaluerFunc func param
+      where
+        evaluerFunc :: (FonctionCode, FonctionArgCount) -> [NumValeur] -> Maybe NumValeur
+        evaluerFunc (FonctionCode code, FonctionArgCount count) param = checkValidLenght >> internalEvaluer code (ParamList param, funcs)
+          where
+            checkValidLenght :: Maybe ()
+            checkValidLenght = when (length param /= count) Nothing
