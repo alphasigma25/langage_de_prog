@@ -35,14 +35,14 @@ parser :: String -> Either ParseError Expr
 parser list = parseExpr list >>= (\(reste, parsed) -> if reste == "" then Right parsed else Left $ Overflow reste)
 
 parseExpr :: String -> ParsingInfos Expr
-parseExpr list = parseInfix <$> parseRootExpr list
+parseExpr list = parseRootExpr list >>= parseInfix
   where
-    parseInfix :: PartialParse Expr -> PartialParse Expr
-    parseInfix source@(x : xs, expr)
-      | x == '+' = either (const source) (fmap (Addition expr)) (parseExpr xs)
-      | x == '*' = either (const source) (fmap (Multiplication expr)) (parseExpr xs)
+    parseInfix :: PartialParse Expr -> ParsingInfos Expr
+    parseInfix (x : xs, expr)
+      | x == '+' = fmap (fmap (Addition expr)) (parseExpr xs)
+      | x == '*' = fmap (fmap (Multiplication expr)) (parseExpr xs)
       | x == ' ' = parseInfix (xs, expr)
-    parseInfix source = source
+    parseInfix source = Right source
 
     parseRootExpr :: String -> ParsingInfos Expr
     parseRootExpr [] = Left IncompleteExpression
