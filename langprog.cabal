@@ -37,28 +37,65 @@ author:        alphasigma
 -- maintainer:
 -- A copyright notice.
 -- copyright:
--- build-type:         Simple
+build-type:         Simple
 -- Extra doc files to be distributed with the package, such as a CHANGELOG or a README.
 -- extra-doc-files:    CHANGELOG.md
 -- Extra source files to be distributed with the package, such as examples, or a tutorial module.
 -- extra-source-files:
-common warnings
+common params
   ghc-options: -Wall
+  default-language: Haskell2010
 
-library
+library Parser
   -- Import common warning flags.
-  import:           warnings
+  import:           params
 
   -- Modules exported by the library.
   exposed-modules:
-    Eval.Eval
-    Grammaire.Expr
-    Parser.Parser
+    Parser
 
   -- Modules included in this library but not exported.
   other-modules:
-    Parser.Helper
-    Parser.RevString
+    Helper
+    RevString
+
+  -- LANGUAGE extensions used by modules in this package.
+  -- other-extensions:
+  -- Other library packages from which modules are imported.
+  build-depends:    base, langprog:Grammaire
+
+  -- Directories containing source files.
+  hs-source-dirs:   lib/Parser
+
+library Eval
+  -- Import common warning flags.
+  import:           params
+
+  -- Modules exported by the library.
+  exposed-modules:
+    Eval
+
+  -- Modules included in this library but not exported.
+  -- other-modules:
+
+  -- LANGUAGE extensions used by modules in this package.
+  -- other-extensions:
+  -- Other library packages from which modules are imported.
+  build-depends:    base, langprog:Grammaire, extra
+
+  -- Directories containing source files.
+  hs-source-dirs:   lib/Eval
+
+library Grammaire
+  -- Import common warning flags.
+  import:           params
+
+  -- Modules exported by the library.
+  exposed-modules:
+    Expr
+
+  -- Modules included in this library but not exported.
+  -- other-modules:
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
@@ -66,14 +103,14 @@ library
   build-depends:    base
 
   -- Directories containing source files.
-  hs-source-dirs:   lib
+  hs-source-dirs:   lib/Grammaire
 
   -- Base language which the package is written in.
-  default-language: Haskell2010
+  -- default-language: Haskell2010
 
 executable langprog
   -- Import common warning flags.
-  import:           warnings
+  import:           params
 
   -- .hs or .lhs file containing the Main module.
   main-is:          Main.hs
@@ -85,10 +122,10 @@ executable langprog
   -- Other library packages from which modules are imported.
   build-depends:
     , base
-    , langprog
+    , langprog:{Eval,Grammaire,Parser}
 
   -- Directories containing source files.
   hs-source-dirs:   app
 
   -- Base language which the package is written in.
-  default-language: Haskell2010
+  -- default-language: Haskell2010

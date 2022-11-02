@@ -2,12 +2,12 @@
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-module Parser.Parser where
+module Parser (parser) where
 
-import Data.Char (isAlpha, isAlphaNum, isDigit)
-import Grammaire.Expr
-import Parser.Helper (readMaybeInt)
-import Parser.RevString (RevString, addRS)
+import Data.Char (isAlpha, isAlphaNum, isDigit, isSpace)
+import Expr
+import Helper (readMaybeInt)
+import RevString (RevString, addRS)
 
 data ParseError
   = IncompleteExpression
@@ -40,33 +40,35 @@ parseExpr list = parseRootExpr list >>= parseInfix
   where
     parseInfix :: PartialParse Expr -> ParsingInfos Expr
     parseInfix (x : xs, expr)
-      | x == '+' = fmap (fmap (Addition expr)) (parseExpr xs)
-      | x == '*' = fmap (fmap (Multiplication expr)) (parseExpr xs)
-      | x == ' ' = parseInfix (xs, expr)
+      | x == '+' = fmap (fmap (Operation Addition expr)) (parseExpr xs)
+      | x == '*' = fmap (fmap (Operation Multiplication expr)) (parseExpr xs)
+      | x == '-' = fmap (fmap (Operation Soustration expr)) (parseExpr xs)
+      | x == '/' = fmap (fmap (Operation Division expr)) (parseExpr xs)
+      | isSpace x = parseInfix (xs, expr)
     parseInfix source = Right source
 
     parseRootExpr :: String -> ParsingInfos Expr
     parseRootExpr [] = Left IncompleteExpression
     parseRootExpr l@(x : xs)
-      | x == ' ' = parseRootExpr xs
+      | isSpace x = parseRootExpr xs
       | x == '-' = fmap (fmap $ Valeur . (0 -)) (parseDigit xs)
       | isAlpha x = parseText $ readText l
       | isDigit x = fmap (fmap Valeur) (parseDigit l)
       | otherwise = Left $ UnrecognizedChar x
-      where
-        parseText :: PartialParse String -> ParsingInfos Expr
-        parseText (suite, mot)
-          | mot == "if" = parseIf suite
-          | otherwise = Left $ UnrecognisedToken mot
-          where
-            parseIf :: String -> ParsingInfos Expr
-            parseIf suite0 = do
-              (suite1, ifexpr) <- parseExpr suite0
-              (suite11, _) <- validate suite1 "then"
-              (suite2, thenexpr) <- parseExpr suite11
-              (suite21, _) <- validate suite2 "else"
-              (suite3, elseexpr) <- parseExpr suite21
-              pure (suite3, If ifexpr thenexpr elseexpr)
+
+    parseText :: PartialParse String -> ParsingInfos Expr
+    parseText (suite, mot)
+      | mot == "if" = do
+          (suite1, ifexpr) <- parseExpr suite
+          (suite11, _) <- validate suite1 "then"
+          (suite2, thenexpr) <- parseExpr suite11
+          (suite21, _) <- validate suite2 "else"
+          (suite3, elseexpr) <- parseExpr suite21
+          pure (suite3, If ifexpr thenexpr elseexpr)
+      | otherwise = Left $ UnrecognisedToken mot -- plus ça pour les fonctions en fait...
+
+-- parse fonction ?
+-- comment savoir si on doit parse un param ou une fonction ?
 
 readText :: String -> PartialParse String
 readText = readTextInternal mempty

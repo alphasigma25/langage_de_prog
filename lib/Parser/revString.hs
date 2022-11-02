@@ -1,6 +1,6 @@
 {-# LANGUAGE InstanceSigs #-}
 
-module Parser.RevString where
+module RevString (RevString, addRS) where
 
 newtype RevString = RevString String
 

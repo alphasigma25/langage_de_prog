@@ -1,8 +1,8 @@
 module Main where
 
-import Eval.Eval (evaluer)
-import Grammaire.Expr
-import Parser.Parser (parser)
+import Eval (evaluer)
+import Expr
+import Parser (parser)
 import System.IO (hFlush, stdout)
 
 main :: IO ()
@@ -25,10 +25,10 @@ fact :: Fonction
 fact =
   If
     (Parametre 0)
-    ( Multiplication
+    ( Operation Multiplication
         (Parametre 0)
         $ Fonction
-          [Addition (Parametre 0) (Valeur (-1))]
+          [Operation Addition (Parametre 0) (Valeur (-1))]
           fact
     )
     (Valeur 1)
