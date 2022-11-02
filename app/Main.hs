@@ -1,6 +1,8 @@
 module Main where
 
+import Data.Map ((!?))
 import Data.Map as M (empty)
+import Data.Text (strip)
 import Eval (evaluer)
 import Expr
 import Parser (parseExpr, parseFunc)
@@ -14,23 +16,40 @@ main = internalMain M.empty
       putStr "> "
       hFlush stdout
       line <- getLine
-      let (execution, ctx) = printResult $ tryParseLine (toString line)
-      execution
-      internalMain ctx
+      selectAction (toString line)
       where
-        printResult :: Either ParseError (Either Program Expr) -> (IO (), Program)
-        printResult (Right (Left prg)) = (pass, prg)
-        printResult (Right (Right expr)) = (print (evaluer expr ct), ct)
-        printResult (Left err) = (print err, ct)
+        selectAction :: String -> IO ()
+        selectAction (':' : xs) = specialLine xs
+        selectAction line@(_ : _) = parseLine line
+        selectAction [] = internalMain ct
 
-        tryParseLine :: String -> Either ParseError (Either Program Expr)
-        tryParseLine line = tryParseExpr (parseFunc ct line)
+        specialLine :: String -> IO ()
+        specialLine "quit" = pass
+        specialLine ('d' : 'e' : 's' : 'c' : ' ' : str) = printDesc $ strip (toText str)
           where
-            tryParseExpr :: Either ParseError Program -> Either ParseError (Either Program Expr)
-            tryParseExpr (Right x) = pure $ Left x
-            tryParseExpr (Left x)
-              | notAFuncError x = pure <$> parseExpr ct line
-              | otherwise = Left x
+            printDesc :: Text -> IO ()
+            printDesc name = maybe (print $ parseExpr ct str) (\(code, _) -> print code) (ct !? FonctionName name) >> internalMain ct
+        specialLine cmd = ((putStrLn $ "Invalid command : " ++ cmd) :: IO ()) >> internalMain ct
+
+        parseLine :: String -> IO ()
+        parseLine tLine = do
+          let (execution, ctx) = printResult $ tryParseLine tLine
+          execution
+          internalMain ctx
+          where
+            printResult :: Either ParseError (Either Program Expr) -> (IO (), Program)
+            printResult (Right (Left prg)) = (pass, prg)
+            printResult (Right (Right expr)) = (print (evaluer expr ct), ct)
+            printResult (Left err) = (print err, ct)
+
+            tryParseLine :: String -> Either ParseError (Either Program Expr)
+            tryParseLine line = tryParseExpr (parseFunc ct line)
+              where
+                tryParseExpr :: Either ParseError Program -> Either ParseError (Either Program Expr)
+                tryParseExpr (Right x) = pure $ Left x
+                tryParseExpr (Left x)
+                  | notAFuncError x = pure <$> parseExpr ct line
+                  | otherwise = Left x
 
 facths :: Int -> Int
 facths n = if n /= 0 then n * facths n - 1 else 1

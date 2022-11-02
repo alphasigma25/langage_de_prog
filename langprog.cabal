@@ -67,7 +67,10 @@ library grammaire
 library eval
   -- Import common warning flags.
   import:          commonOpts
-  exposed-modules: Eval
+  exposed-modules:
+    Eval
+    RuntimeError
+
   other-modules:   EvalHelper
   build-depends:
     , base

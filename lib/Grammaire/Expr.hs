@@ -1,16 +1,20 @@
+{-# LANGUAGE InstanceSigs #-}
+
 module Expr where
 
-newtype FonctionCode = FonctionCode Expr deriving (Show)
+import qualified Text.Show
 
-newtype FonctionName = FonctionName Text deriving (Show, Ord, Eq)
+newtype FonctionCode = FonctionCode Expr
 
-newtype FonctionArgCount = FonctionArgCount Int deriving (Show)
+newtype FonctionName = FonctionName Text deriving (Ord, Eq)
 
-newtype ParamIndex = ParamIndex Int deriving (Show)
+newtype FonctionArgCount = FonctionArgCount Int
 
-newtype NumValeur = NumValeur Int deriving (Show)
+newtype ParamIndex = ParamIndex Int
 
-data Operation = OpAdd | OpSous | OpMult | OpDiv deriving (Show)
+newtype NumValeur = NumValeur Int
+
+data Operation = OpAdd | OpSous | OpMult | OpDiv
 
 type Program = Map FonctionName (FonctionCode, FonctionArgCount)
 
@@ -23,4 +27,27 @@ data Expr
   | If Condition Expr Expr
   | Operation Operation Expr Expr
   | Error
-  deriving (Show)
+
+instance Show NumValeur where
+  show :: NumValeur -> String
+  show (NumValeur v) = show v
+
+instance Show FonctionCode where
+  show :: FonctionCode -> String
+  show (FonctionCode fc) = show fc
+
+instance Show Operation where
+  show :: Operation -> String
+  show OpAdd = "+"
+  show OpSous = "-"
+  show OpMult = "*"
+  show OpDiv = "/"
+
+instance Show Expr where
+  show :: Expr -> String
+  show Error = "Error"
+  show (If cond expr1 expr2) = "If " ++ show cond ++ " then " ++ show expr1 ++ " else " ++ show expr2
+  show (Valeur c) = show c
+  show (Parametre (ParamIndex p)) = 'p' : show p
+  show (Fonction params (FonctionName name)) = toString name ++ foldl' (\x y -> x ++ ' ' : show y) "" params
+  show (Operation op v1 v2) = show v1 ++ ' ' : show op ++ ' ' : show v2
