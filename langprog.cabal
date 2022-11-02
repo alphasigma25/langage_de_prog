@@ -62,7 +62,7 @@ library Parser
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
   -- Other library packages from which modules are imported.
-  build-depends:    base, langprog:Grammaire
+  build-depends:    base, langprog:Grammaire, containers
 
   -- Directories containing source files.
   hs-source-dirs:   lib/Parser
@@ -81,7 +81,7 @@ library Eval
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
   -- Other library packages from which modules are imported.
-  build-depends:    base, langprog:Grammaire, extra
+  build-depends:    base, langprog:Grammaire, extra, containers
 
   -- Directories containing source files.
   hs-source-dirs:   lib/Eval
@@ -123,6 +123,7 @@ executable langprog
   build-depends:
     , base
     , langprog:{Eval,Grammaire,Parser}
+    , containers
 
   -- Directories containing source files.
   hs-source-dirs:   app

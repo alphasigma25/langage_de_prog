@@ -2,10 +2,12 @@
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-module Parser (parser) where
+module Parser (ParseError, parseRepl) where
 
+import Data.Bifunctor (Bifunctor (second))
 import Data.Char (isAlpha, isAlphaNum, isDigit, isSpace)
-import Expr
+import Data.Map (Map, (!?))
+import Expr (Expr (..), FctDef, Operation (..))
 import Helper (readMaybeInt)
 import RevString (RevString, addRS)
 
@@ -17,6 +19,7 @@ data ParseError
   | IntParseError String
   | IntOverflowError String
   | WrongToken String String
+  | NotAnError
 
 instance Show ParseError where
   show :: ParseError -> String
@@ -27,23 +30,35 @@ instance Show ParseError where
   show (IntParseError str) = "Error while parsing int : " ++ str
   show (IntOverflowError str) = "Int overflow while parsing int : " ++ str
   show (WrongToken word test) = "Wrong token. Recieved : " ++ word ++ " Expected : " ++ test
+  show NotAnError = error "Or maybe not"
 
 type PartialParse x = (String, x) -- ce qui reste à parser + valeur
 
 type ParsingInfos x = Either ParseError (PartialParse x)
 
-parser :: String -> Either ParseError Expr
-parser list = parseExpr list >>= (\(reste, parsed) -> if reste == "" then Right parsed else Left $ Overflow reste)
+type Context = Map String Int
 
-parseExpr :: String -> ParsingInfos Expr
-parseExpr list = parseRootExpr list >>= parseInfix
+parseRepl :: Map String Int -> String -> Either ParseError (Either Expr (String, FctDef))
+parseRepl ctx str = Left <$> parserReplExpr ctx str
+
+parserReplFct :: Map String Int -> String -> Either ParseError (String, FctDef)
+parserReplFct = undefined -- TODO
+
+parserReplExpr :: Context -> String -> Either ParseError Expr
+parserReplExpr context list = parseExpr context list >>= (\(reste, parsed) -> if reste == "" then Right parsed else Left $ Overflow reste)
+
+parserFile :: String -> a -- TODO : Futur
+parserFile = undefined -- TODO
+
+parseExpr :: Context -> String -> ParsingInfos Expr
+parseExpr ctx list = parseRootExpr list >>= parseInfix
   where
     parseInfix :: PartialParse Expr -> ParsingInfos Expr
     parseInfix (x : xs, expr)
-      | x == '+' = fmap (fmap (Operation Addition expr)) (parseExpr xs)
-      | x == '*' = fmap (fmap (Operation Multiplication expr)) (parseExpr xs)
-      | x == '-' = fmap (fmap (Operation Soustration expr)) (parseExpr xs)
-      | x == '/' = fmap (fmap (Operation Division expr)) (parseExpr xs)
+      | x == '+' = fmap (fmap (Operation Addition expr)) (parseExpr ctx xs)
+      | x == '*' = fmap (fmap (Operation Multiplication expr)) (parseExpr ctx xs)
+      | x == '-' = fmap (fmap (Operation Soustration expr)) (parseExpr ctx xs)
+      | x == '/' = fmap (fmap (Operation Division expr)) (parseExpr ctx xs)
       | isSpace x = parseInfix (xs, expr)
     parseInfix source = Right source
 
@@ -59,16 +74,21 @@ parseExpr list = parseRootExpr list >>= parseInfix
     parseText :: PartialParse String -> ParsingInfos Expr
     parseText (suite, mot)
       | mot == "if" = do
-          (suite1, ifexpr) <- parseExpr suite
-          (suite11, _) <- validate suite1 "then"
-          (suite2, thenexpr) <- parseExpr suite11
-          (suite21, _) <- validate suite2 "else"
-          (suite3, elseexpr) <- parseExpr suite21
-          pure (suite3, If ifexpr thenexpr elseexpr)
-      | otherwise = Left $ UnrecognisedToken mot -- plus ça pour les fonctions en fait...
-
--- parse fonction ?
--- comment savoir si on doit parse un param ou une fonction ?
+        (suite1, ifexpr) <- parseExpr ctx suite
+        (suite11, _) <- validate suite1 "then"
+        (suite2, thenexpr) <- parseExpr ctx suite11
+        (suite21, _) <- validate suite2 "else"
+        (suite3, elseexpr) <- parseExpr ctx suite21
+        pure (suite3, If ifexpr thenexpr elseexpr)
+      | otherwise = do
+        nbParams <- maybe (Left $ UnrecognisedToken mot) Right $ ctx !? mot
+        let params = parserNParam nbParams suite []
+        fmap (second (Fonction mot)) params
+      where
+        parserNParam :: Int -> String -> [Expr] -> ParsingInfos [Expr]
+        parserNParam 0 toParse params = Right (toParse, params)
+        parserNParam nb toParse params =
+          parseExpr ctx toParse >>= (\(str, expr) -> parserNParam (nb - 1) str (expr : params))
 
 readText :: String -> PartialParse String
 readText = readTextInternal mempty

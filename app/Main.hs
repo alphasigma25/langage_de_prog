@@ -1,34 +1,39 @@
 module Main where
 
-import Eval (evaluer)
-import Expr
-import Parser (parser)
+import Data.Map (Map, empty, insert)
+import Eval (FctDef, evaluer)
+import Expr (Expr (..), Operation (..))
+import Parser (parseRepl)
 import System.IO (hFlush, stdout)
 
 main :: IO ()
-main = do
-  putStr "> "
-  hFlush stdout
-  line <- getLine
-  case parser line of
-    Left err -> print err
-    Right ex -> do
-      print ex
-      print $ evaluer [] ex
-  -- either print (\x -> print x >> print (evaluer [] x)) (parser line)
-  main
+main = mainInternal empty
+  where
+    mainInternal :: Map String FctDef -> IO ()
+    mainInternal context = do
+      putStr "> "
+      hFlush stdout
+      line <- getLine
+      case parseRepl empty line of
+        Left err -> print err >> mainInternal context
+        Right (Right (name, fctDef)) -> mainInternal $ insert name fctDef context
+        Right (Left ex) -> do
+          print ex -- TODO ?
+          print $ evaluer context ex
+          mainInternal context
 
 facths :: Int -> Int
 facths n = if n /= 0 then n * facths n - 1 else 1
 
-fact :: Fonction
+fact :: Expr
 fact =
   If
     (Parametre 0)
-    ( Operation Multiplication
+    ( Operation
+        Multiplication
         (Parametre 0)
         $ Fonction
+          "fact"
           [Operation Addition (Parametre 0) (Valeur (-1))]
-          fact
     )
     (Valeur 1)
