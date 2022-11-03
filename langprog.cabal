@@ -106,7 +106,21 @@ library parser
   -- Directories containing source files.
   hs-source-dirs:  lib/Parser
 
-executable customRepl
+library compilation
+  -- Import common warning flags.
+  import:          commonOpts
+  exposed-modules: Compile
+
+  --other-modules:
+  build-depends:
+    , base
+    , langprog:grammaire
+    , relude
+
+  -- Directories containing source files.
+  hs-source-dirs:  lib/Compilation
+
+executable repl
   -- Import common warning flags.
   import:         commonOpts
 
@@ -122,4 +136,17 @@ executable customRepl
     , relude
 
   -- Directories containing source files.
-  hs-source-dirs: app
+  hs-source-dirs: repl
+
+executable compiler
+  -- Import common warning flags.
+  import:         commonOpts
+
+  -- .hs or .lhs file containing the Main module.
+  main-is:        Main.hs
+  build-depends:
+    , base
+    , langprog:{compilation, grammaire, parser}
+    , relude
+
+  hs-source-dirs: compiler

@@ -9,5 +9,11 @@ cradle:
     - path: "lib/Parser"
       component: "langprog:lib:parser"
 
-    - path: "app"
-      component: "langprog:exe:customRepl"
+    - path: "lib/Compilation"
+      component: "langprog:lib:compilation"
+
+    - path: "repl"
+      component: "langprog:exe:repl"
+
+    - path: "compiler"
+      component: "langprog:exe:compiler"
