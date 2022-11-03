@@ -32,7 +32,7 @@ evaluer m = evaluerInternal (m, [])
       ex2 <- evaluerInternal context e2
       applyOp op ex1 ex2
     evaluerInternal _ (Valeur e) = Right e
-    -- evaluer (fct, params) (Fonction p e2) = evaluer (fmap (evaluer context) p) e2
+    -- evaluer (fct, params) (Fonction p e2) = evaluer (fmap (evaluer context) p) e2 --TODO
     evaluerInternal _ (Fonction _ _) = undefined --TODO
     evaluerInternal (_, params) (Parametre i) = maybe (Left RTError) Right (params !? i)
     evaluerInternal _ Undefined = Left UnknownExprError

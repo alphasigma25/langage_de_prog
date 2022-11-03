@@ -74,16 +74,16 @@ parseExpr ctx list = parseRootExpr list >>= parseInfix
     parseText :: PartialParse String -> ParsingInfos Expr
     parseText (suite, mot)
       | mot == "if" = do
-        (suite1, ifexpr) <- parseExpr ctx suite
-        (suite11, _) <- validate suite1 "then"
-        (suite2, thenexpr) <- parseExpr ctx suite11
-        (suite21, _) <- validate suite2 "else"
-        (suite3, elseexpr) <- parseExpr ctx suite21
-        pure (suite3, If ifexpr thenexpr elseexpr)
+          (suite1, ifexpr) <- parseExpr ctx suite
+          (suite11, _) <- validate suite1 "then"
+          (suite2, thenexpr) <- parseExpr ctx suite11
+          (suite21, _) <- validate suite2 "else"
+          (suite3, elseexpr) <- parseExpr ctx suite21
+          pure (suite3, If ifexpr thenexpr elseexpr)
       | otherwise = do
-        nbParams <- maybe (Left $ UnrecognisedToken mot) Right $ ctx !? mot
-        let params = parserNParam nbParams suite []
-        fmap (second (Fonction mot)) params
+          nbParams <- maybe (Left $ UnrecognisedToken mot) Right $ ctx !? mot
+          let params = parserNParam nbParams suite []
+          fmap (second (Fonction mot)) params
       where
         parserNParam :: Int -> String -> [Expr] -> ParsingInfos [Expr]
         parserNParam 0 toParse params = Right (toParse, params)

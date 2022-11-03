@@ -14,7 +14,7 @@ main = mainInternal empty
       putStr "> "
       hFlush stdout
       line <- getLine
-      case parseRepl empty line of
+      case parseRepl empty line of -- TODO
         Left err -> print err >> mainInternal context
         Right (Right (name, fctDef)) -> mainInternal $ insert name fctDef context
         Right (Left ex) -> do
