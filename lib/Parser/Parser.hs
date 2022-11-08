@@ -45,7 +45,44 @@ type ParCtx = Map String Int
 type Context = (FctCtx, ParCtx)
 
 parseRepl :: Map String Int -> String -> Either ParseError (Either Expr (String, FctDef))
-parseRepl ctx str = Right <$> parserReplFct ctx str -- Left <$> parserReplExpr ctx str
+parseRepl ctx str =
+  let a = Left <$> parserReplExpr ctx str -- TODO
+   in either (const a) (Right . Right) $ parserReplFct ctx str
+
+-- Cas 1
+-- fact x = if x then x * fact x - 1 else 1
+-- fact 5 -> 120
+
+-- Cas 2
+-- a x y z = if x then y else z
+-- a 2 3 5 -> 3
+-- a 0 3 5 -> 5
+
+-- Cas 3
+-- e if = 5 -> erreur parse
+
+-- Cas 4
+-- if x = x -> erreur parse
+
+-- Cas 5
+-- a x x = x -> erreur parse
+
+-- Cassis
+-- a x y = x + y
+-- b x = a x 2
+-- b 3 -> 5
+-- a x y = x * y
+-- b 3 -> 6
+
+-- Cassette
+-- a x y = x + y
+-- a x = x -> erreur parse
+
+-- Cas 8
+-- a x = 0
+-- b x = a x
+-- a x = b x
+-- a 1 -> boucle infinie
 
 parserReplFct :: FctCtx -> String -> Either ParseError (String, FctDef)
 parserReplFct context l@(c : cs)
@@ -71,7 +108,7 @@ parserReplExpr :: FctCtx -> String -> Either ParseError Expr
 parserReplExpr context list = parseExpr (context, empty) list >>= (\(reste, parsed) -> if reste == "" then Right parsed else Left $ Overflow reste)
 
 parserFile :: String -> a -- TODO : Futur
-parserFile = undefined -- TODO
+parserFile = undefined
 
 parseExpr :: Context -> String -> ParsingInfos Expr
 parseExpr ctx list = parseRootExpr list >>= parseInfix
