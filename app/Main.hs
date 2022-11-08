@@ -28,12 +28,12 @@ facths n = if n /= 0 then n * facths n - 1 else 1
 fact :: Expr
 fact =
   If
-    (Parametre 0)
+    (ParamDef 0)
     ( Operation
         Multiplication
-        (Parametre 0)
-        $ Fonction
+        (ParamDef 0)
+        $ Call
           "fact"
-          [Operation Addition (Parametre 0) (Valeur (-1))]
+          [Operation Addition (Call "fact" []) (Valeur (-1))]
     )
     (Valeur 1)

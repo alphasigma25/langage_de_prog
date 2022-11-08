@@ -17,8 +17,8 @@ instance Show Operation where
 
 data Expr
   = Valeur Int
-  | Fonction String [Expr]
-  | Parametre Int
+  | Call String [Expr]
+  | ParamDef Int -- No du param dans la fonction
   | If Condition Expr Expr
   | -- | Addition Expr Expr -- chaque nouvelle fonctionnalité = new constructeur
     -- | Multiplication Expr Expr --TODO
@@ -28,8 +28,8 @@ data Expr
 instance Show Expr where
   show :: Expr -> String
   show (Valeur v) = "value " ++ show v  -- TODO ?
-  show (Parametre p) = "param " ++ show p
+  show (ParamDef p) = "param " ++ show p
   show (Operation op v1 v2) = show v1 ++ ' ' : show op ++ ' ' : show v2
   show Undefined = "???"
-  show (Fonction _ _) = error "TODO" -- TODO
+  show (Call _ _) = error "TODO" -- TODO
   show (If cond true false) = "if " ++ show cond ++ " then " ++ show true ++ " else " ++ show false

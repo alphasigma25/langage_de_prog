@@ -6,7 +6,7 @@ module Parser (ParseError, parseRepl) where
 
 import Data.Bifunctor (Bifunctor (second))
 import Data.Char (isAlpha, isAlphaNum, isDigit, isSpace)
-import Data.Map (Map, (!?))
+import Data.Map (Map, empty, insert, size, (!?))
 import Expr (Expr (..), FctDef, Operation (..))
 import Helper (readMaybeInt)
 import RevString (RevString, addRS)
@@ -36,16 +36,43 @@ type PartialParse x = (String, x) -- ce qui reste à parser + valeur
 
 type ParsingInfos x = Either ParseError (PartialParse x)
 
-type Context = Map String Int
+type FctName = String
+
+type FctCtx = Map FctName Int
+
+type ParCtx = Map String Int
+
+type Context = (FctCtx, ParCtx)
+
+-- type FctDef = (Int, Expr) -- nb params + expr
+
+-- type Param_ctx = Map String Int -- les noms des params avec leur no de param ?
 
 parseRepl :: Map String Int -> String -> Either ParseError (Either Expr (String, FctDef))
-parseRepl ctx str = Left <$> parserReplExpr ctx str
+parseRepl ctx str = Right <$> parserReplFct ctx str -- Left <$> parserReplExpr ctx str
 
-parserReplFct :: Map String Int -> String -> Either ParseError (String, FctDef)
-parserReplFct = undefined -- TODO
+parserReplFct :: FctCtx -> String -> Either ParseError (String, FctDef)
+parserReplFct context l@(c : cs)
+  | isSpace c = parserReplFct context cs
+  | isAlpha c =
+    let (suite, name) = readText l
+     in parseFct name (context, empty) suite
+  | otherwise = Left $ UnrecognizedChar c
+  where
+    parseFct :: FctName -> Context -> String -> Either ParseError (String, FctDef)
+    parseFct fctName ctx@(func, params) l2@(x : xs)
+      | isSpace x = parseFct fctName ctx xs
+      | x == '=' = fmap (\(_, expr) -> (fctName, (size params, expr))) (parseExpr (insert fctName (size params) func, params) xs)
+      | isAlpha x =
+        let (suite, newParam) = readText l2
+         in let newContext = (\pctx -> insert newParam (size pctx) pctx) <$> ctx
+             in parseFct fctName newContext suite
+      | otherwise = Left $ UnrecognizedChar x
+    parseFct _ _ [] = Left IncompleteExpression
+parserReplFct _ [] = Left IncompleteExpression
 
-parserReplExpr :: Context -> String -> Either ParseError Expr
-parserReplExpr context list = parseExpr context list >>= (\(reste, parsed) -> if reste == "" then Right parsed else Left $ Overflow reste)
+parserReplExpr :: FctCtx -> String -> Either ParseError Expr
+parserReplExpr context list = parseExpr (context, empty) list >>= (\(reste, parsed) -> if reste == "" then Right parsed else Left $ Overflow reste)
 
 parserFile :: String -> a -- TODO : Futur
 parserFile = undefined -- TODO
@@ -74,16 +101,18 @@ parseExpr ctx list = parseRootExpr list >>= parseInfix
     parseText :: PartialParse String -> ParsingInfos Expr
     parseText (suite, mot)
       | mot == "if" = do
-          (suite1, ifexpr) <- parseExpr ctx suite
-          (suite11, _) <- validate suite1 "then"
-          (suite2, thenexpr) <- parseExpr ctx suite11
-          (suite21, _) <- validate suite2 "else"
-          (suite3, elseexpr) <- parseExpr ctx suite21
-          pure (suite3, If ifexpr thenexpr elseexpr)
-      | otherwise = do
-          nbParams <- maybe (Left $ UnrecognisedToken mot) Right $ ctx !? mot
-          let params = parserNParam nbParams suite []
-          fmap (second (Fonction mot)) params
+        (suite1, ifexpr) <- parseExpr ctx suite
+        (suite11, _) <- validate suite1 "then"
+        (suite2, thenexpr) <- parseExpr ctx suite11
+        (suite21, _) <- validate suite2 "else"
+        (suite3, elseexpr) <- parseExpr ctx suite21
+        pure (suite3, If ifexpr thenexpr elseexpr)
+      | otherwise =
+        let callExpr = do
+              nbParams <- maybe (Left $ UnrecognisedToken mot) Right $ fst ctx !? mot
+              let params = parserNParam nbParams suite []
+              fmap (second (Call mot)) params
+         in maybe callExpr (\x -> Right (suite, ParamDef x)) (snd ctx !? mot)
       where
         parserNParam :: Int -> String -> [Expr] -> ParsingInfos [Expr]
         parserNParam 0 toParse params = Right (toParse, params)
