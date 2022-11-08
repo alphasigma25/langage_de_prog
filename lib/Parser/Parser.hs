@@ -44,10 +44,6 @@ type ParCtx = Map String Int
 
 type Context = (FctCtx, ParCtx)
 
--- type FctDef = (Int, Expr) -- nb params + expr
-
--- type Param_ctx = Map String Int -- les noms des params avec leur no de param ?
-
 parseRepl :: Map String Int -> String -> Either ParseError (Either Expr (String, FctDef))
 parseRepl ctx str = Right <$> parserReplFct ctx str -- Left <$> parserReplExpr ctx str
 

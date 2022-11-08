@@ -5,7 +5,7 @@ import Eval (FctDef, evaluer)
 import Expr (Expr (..), Operation (..))
 import Parser (parseRepl)
 import System.IO (hFlush, stdout)
-
+-- type FctDef = (Int, Expr)
 main :: IO ()
 main = mainInternal empty
   where
@@ -14,7 +14,7 @@ main = mainInternal empty
       putStr "> "
       hFlush stdout
       line <- getLine
-      case parseRepl empty line of -- TODO
+      case parseRepl (fmap fst context) line of
         Left err -> print err >> mainInternal context
         Right (Right (name, fctDef)) -> mainInternal $ insert name fctDef context
         Right (Left ex) -> do
