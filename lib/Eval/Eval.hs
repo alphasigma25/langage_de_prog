@@ -1,3 +1,5 @@
+{-# LANGUAGE InstanceSigs #-}
+
 module Eval (RuntimeError, evaluer, FctDef) where
 
 import Data.List.Extra as L ((!?))
@@ -12,6 +14,7 @@ data RuntimeError
   | ZeroDiv
 
 instance Show RuntimeError where
+  show :: RuntimeError -> String
   show RTError = "Param out of range"
   show UnknownFunction = "Unknown function name"
   show UnknownExprError = "Invalid expression"

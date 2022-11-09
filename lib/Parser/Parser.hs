@@ -6,7 +6,7 @@ module Parser (ParseError, parseRepl) where
 
 import Data.Bifunctor (Bifunctor (second))
 import Data.Char (isAlpha, isAlphaNum, isDigit, isSpace)
-import Data.Map (Map, empty, insert, size, (!?))
+import Data.Map (Map, empty, insert, member, size, (!?))
 import Expr (Expr (..), FctDef, Operation (..))
 import Helper (readMaybeInt)
 import RevString (RevString, addRS)
@@ -19,6 +19,9 @@ data ParseError
   | IntParseError String
   | IntOverflowError String
   | WrongToken String String
+  | ReservedToken String
+  | DuplicatedParamName String
+  | InvalidParamCount Int Int
   | NotAnError
 
 instance Show ParseError where
@@ -30,6 +33,9 @@ instance Show ParseError where
   show (IntParseError str) = "Error while parsing int : " ++ str
   show (IntOverflowError str) = "Int overflow while parsing int : " ++ str
   show (WrongToken word test) = "Wrong token. Recieved : " ++ word ++ " Expected : " ++ test
+  show (ReservedToken str) = "Reserved token used in param of function definition : " ++ str
+  show (DuplicatedParamName str) = "Duplicated parameter name : " ++ str
+  show (InvalidParamCount e r) = "Wrong token. Expected : " ++ show e ++ " Recieved : " ++ show r
   show NotAnError = error "Or maybe not"
 
 type PartialParse x = (String, x) -- ce qui reste à parser + valeur
@@ -49,25 +55,25 @@ parseRepl ctx str =
   let a = Left <$> parserReplExpr ctx str -- TODO
    in either (const a) (Right . Right) $ parserReplFct ctx str
 
--- Cas 1
+-- Cas 1 OK ?
 -- fact x = if x then x * fact x - 1 else 1
 -- fact 5 -> 120
 
--- Cas 2
+-- Cas 2 OK ?
 -- a x y z = if x then y else z
 -- a 2 3 5 -> 3
 -- a 0 3 5 -> 5
 
--- Cas 3
+-- Cas 3 presque OK
 -- e if = 5 -> erreur parse
 
--- Cas 4
+-- Cas 4 presque OK
 -- if x = x -> erreur parse
 
--- Cas 5
+-- Cas 5 presque OK
 -- a x x = x -> erreur parse
 
--- Cassis
+-- Cassis OK ?
 -- a x y = x + y
 -- b x = a x 2
 -- b 3 -> 5
@@ -79,36 +85,50 @@ parseRepl ctx str =
 -- a x = x -> erreur parse
 
 -- Cas 8
--- a x = 0
+-- a x = 0 // def a x
 -- b x = a x
 -- a x = b x
 -- a 1 -> boucle infinie
+
+testFctName :: String -> Either ParseError ()
+testFctName "if" = Left (ReservedToken "if")
+testFctName "then" = Left (ReservedToken "then")
+testFctName "else" = Left (ReservedToken "else")
+testFctName "let" = Left (ReservedToken "let")
+testFctName "in" = Left (ReservedToken "in")
+testFctName _ = pure ()
 
 parserReplFct :: FctCtx -> String -> Either ParseError (String, FctDef)
 parserReplFct context l@(c : cs)
   | isSpace c = parserReplFct context cs
   | isAlpha c =
     let (suite, name) = readText l
-     in parseFct name (context, empty) suite
+     in testFctName name >> parseFct name (context, empty) suite
   | otherwise = Left $ UnrecognizedChar c
   where
     parseFct :: FctName -> Context -> String -> Either ParseError (String, FctDef)
     parseFct fctName ctx@(func, params) l2@(x : xs)
       | isSpace x = parseFct fctName ctx xs
-      | x == '=' = fmap (\(_, expr) -> (fctName, (size params, expr))) (parseExpr (insert fctName (size params) func, params) xs)
+      | x == '=' =
+        let redefError = (func !? fctName) >>= (\nbParams -> if nbParams == size params then Nothing else Just (InvalidParamCount (size params) nbParams ))
+         in let funcDef = parseTerminalExpr (insert fctName (size params) func, params) xs
+             in maybe (fmap (\expr -> (fctName, (size params, expr))) funcDef) Left redefError
       | isAlpha x =
         let (suite, newParam) = readText l2
-         in let newContext = (\pctx -> insert newParam (size pctx) pctx) <$> ctx
-             in parseFct fctName newContext suite
+         in let newContext = insert newParam (size params) params
+             in testFctName newParam >> if member newParam params then Left (DuplicatedParamName newParam) else parseFct fctName (func, newContext) suite
       | otherwise = Left $ UnrecognizedChar x
     parseFct _ _ [] = Left IncompleteExpression
 parserReplFct _ [] = Left IncompleteExpression
 
 parserReplExpr :: FctCtx -> String -> Either ParseError Expr
-parserReplExpr context list = parseExpr (context, empty) list >>= (\(reste, parsed) -> if reste == "" then Right parsed else Left $ Overflow reste)
+parserReplExpr context = parseTerminalExpr (context, empty)
 
 parserFile :: String -> a -- TODO : Futur
 parserFile = undefined
+
+parseTerminalExpr :: Context -> String -> Either ParseError Expr
+parseTerminalExpr context list = parseExpr context list >>= (\(reste, parsed) -> if reste == "" then Right parsed else Left $ Overflow reste)
 
 parseExpr :: Context -> String -> ParsingInfos Expr
 parseExpr ctx list = parseRootExpr list >>= parseInfix
@@ -143,7 +163,7 @@ parseExpr ctx list = parseRootExpr list >>= parseInfix
       | otherwise =
         let callExpr = do
               nbParams <- maybe (Left $ UnrecognisedToken mot) Right $ fst ctx !? mot
-              let params = parserNParam nbParams suite []
+              let params = (reverse <$>) <$> parserNParam nbParams suite []
               fmap (second (Call mot)) params
          in maybe callExpr (\x -> Right (suite, ParamDef x)) (snd ctx !? mot)
       where
