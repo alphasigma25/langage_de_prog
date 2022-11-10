@@ -22,14 +22,18 @@ data ParseError
   | ReservedToken String
   | DuplicatedParamName String
   | InvalidParamCount Int Int
+  | NotFuncError Char
+  | NotFunc
   | NotAnError
 
 instance Show ParseError where
   show :: ParseError -> String
   show IncompleteExpression = "Incomplete expression"
+  show NotFunc = "Incomplete expression"
   show (Overflow str) = "Overflow : " ++ str
   show (UnrecognisedToken tok) = "Unrecognised token : " ++ tok
   show (UnrecognizedChar c) = "Unrecognised char : " ++ [c]
+  show (NotFuncError c) = "Unrecognised char : " ++ [c]
   show (IntParseError str) = "Error while parsing int : " ++ str
   show (IntOverflowError str) = "Int overflow while parsing int : " ++ str
   show (WrongToken word test) = "Wrong token. Recieved : " ++ word ++ " Expected : " ++ test
@@ -51,9 +55,15 @@ type ParCtx = Map String Int
 type Context = (FctCtx, ParCtx)
 
 parseRepl :: Map String Int -> String -> Either ParseError (Either Expr (String, FctDef))
-parseRepl ctx str =
-  let a = Left <$> parserReplExpr ctx str -- TODO
-   in either (const a) (Right . Right) $ parserReplFct ctx str
+parseRepl ctx str = either testFunc (Right . Right) $ parserReplFct ctx str
+  where
+    testFunc :: ParseError -> Either ParseError (Either Expr (String, FctDef))
+    testFunc (NotFuncError _) = parseExprInstead
+    testFunc NotFunc = parseExprInstead
+    testFunc err = Left err
+
+    parseExprInstead :: Either ParseError (Either Expr (String, FctDef))
+    parseExprInstead = Left <$> parserReplExpr ctx str
 
 -- Cas 1 OK ?
 -- fact x = if x then x * fact x - 1 else 1
@@ -104,22 +114,22 @@ parserReplFct context l@(c : cs)
   | isAlpha c =
     let (suite, name) = readText l
      in testFctName name >> parseFct name (context, empty) suite
-  | otherwise = Left $ UnrecognizedChar c
+  | otherwise = Left $ NotFuncError c
   where
     parseFct :: FctName -> Context -> String -> Either ParseError (String, FctDef)
     parseFct fctName ctx@(func, params) l2@(x : xs)
       | isSpace x = parseFct fctName ctx xs
       | x == '=' =
-        let redefError = (func !? fctName) >>= (\nbParams -> if nbParams == size params then Nothing else Just (InvalidParamCount (size params) nbParams ))
+        let redefError = (func !? fctName) >>= (\nbParams -> if nbParams == size params then Nothing else Just (InvalidParamCount (size params) nbParams))
          in let funcDef = parseTerminalExpr (insert fctName (size params) func, params) xs
              in maybe (fmap (\expr -> (fctName, (size params, expr))) funcDef) Left redefError
       | isAlpha x =
         let (suite, newParam) = readText l2
          in let newContext = insert newParam (size params) params
              in testFctName newParam >> if member newParam params then Left (DuplicatedParamName newParam) else parseFct fctName (func, newContext) suite
-      | otherwise = Left $ UnrecognizedChar x
-    parseFct _ _ [] = Left IncompleteExpression
-parserReplFct _ [] = Left IncompleteExpression
+      | otherwise = Left $ NotFuncError c
+    parseFct _ _ [] = Left NotFunc
+parserReplFct _ [] = Left NotFunc
 
 parserReplExpr :: FctCtx -> String -> Either ParseError Expr
 parserReplExpr context = parseTerminalExpr (context, empty)
