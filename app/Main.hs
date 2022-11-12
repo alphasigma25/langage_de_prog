@@ -5,6 +5,7 @@ import Eval (FctDef, evaluer)
 import Expr (Expr (..), Operation (..))
 import Parser (parseRepl)
 import System.IO (hFlush, stdout)
+
 -- type FctDef = (Int, Expr)
 main :: IO ()
 main = mainInternal empty
@@ -14,13 +15,19 @@ main = mainInternal empty
       putStr "> "
       hFlush stdout
       line <- getLine
-      case parseRepl (fmap fst context) line of
-        Left err -> print err >> mainInternal context
-        Right (Right (name, fctDef)) -> mainInternal $ insert name fctDef context
-        Right (Left ex) -> do
-          print ex -- TODO ?
-          print $ evaluer context ex
-          mainInternal context
+      getCommand line
+      where
+        getCommand :: String -> IO ()
+        getCommand ":q" = pure ()
+        getCommand (':' : xs) = putStrLn ("Undefined command " ++ xs) >> mainInternal context
+        getCommand "" = mainInternal context
+        getCommand line = case parseRepl (fmap fst context) line of
+          Left err -> print err >> mainInternal context
+          Right (Right (name, fctDef)) -> mainInternal $ insert name fctDef context
+          Right (Left ex) -> do
+            print ex -- TODO ?
+            print $ evaluer context ex
+            mainInternal context
 
 facths :: Int -> Int
 facths n = if n /= 0 then n * facths n - 1 else 1
