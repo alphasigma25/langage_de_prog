@@ -2,7 +2,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-module Parser (ParseError, parseRepl) where
+module Parser (ParseError, parseRepl, parserReplExpr, parserReplFct, parserFile) where
 
 import Data.Bifunctor (Bifunctor (second))
 import Data.Char (isAlpha, isAlphaNum, isDigit, isSpace)
@@ -64,41 +64,6 @@ parseRepl ctx str = either testFunc (Right . Right) $ parserReplFct ctx str
 
     parseExprInstead :: Either ParseError (Either Expr (String, FctDef))
     parseExprInstead = Left <$> parserReplExpr ctx str
-
--- Cas 1 OK ?
--- fact x = if x then x * fact x - 1 else 1
--- fact 5 -> 120
-
--- Cas 2 OK ?
--- a x y z = if x then y else z
--- a 2 3 5 -> 3
--- a 0 3 5 -> 5
-
--- Cas 3 presque OK
--- e if = 5 -> erreur parse
-
--- Cas 4 presque OK
--- if x = x -> erreur parse
-
--- Cas 5 presque OK
--- a x x = x -> erreur parse
-
--- Cassis OK ?
--- a x y = x + y
--- b x = a x 2
--- b 3 -> 5
--- a x y = x * y
--- b 3 -> 6
-
--- Cassette
--- a x y = x + y
--- a x = x -> erreur parse
-
--- Cas 8
--- a x = 0 // def a x
--- b x = a x
--- a x = b x
--- a 1 -> boucle infinie
 
 testFctName :: String -> Either ParseError ()
 testFctName "if" = Left (ReservedToken "if")

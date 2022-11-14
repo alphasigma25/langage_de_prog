@@ -9,8 +9,8 @@
   - `expr`
   - cmd :
     - `:l <file>` -> load
-    - `:d <expr>` -> describe expression
-    - `:d <fct>` -> describe fonction
+    - `:de <expr>` -> describe expression
+    - `:df <fctname>` -> describe fonction
     - `:q` -> quit
 - command line param :
   - `repl <file w main> [exe]`  : exe w/ repl
