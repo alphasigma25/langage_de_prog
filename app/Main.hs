@@ -1,10 +1,11 @@
 module Main where
 
+import Data.Foldable (foldl')
 import Data.Map (Map, empty, insert, (!?))
 import Eval (FctDef, evaluer)
 import Expr (Expr (..), Operation (..))
-import Parser (parseRepl, parserReplExpr)
-import System.IO (hFlush, stdout)
+import Parser (ParseError, parseRepl, parserFile, parserReplExpr)
+import System.IO (Handle, IOMode (ReadMode), hFlush, hGetContents, stdout, withFile)
 
 -- type FctDef = (Int, Expr)
 main :: IO ()
@@ -17,12 +18,21 @@ main = mainInternal empty
       line <- getLine
       getCommand line
       where
-        getCommand :: String -> IO ()
+        getCommand :: String -> IO () --TODO : ajouter une commande pour effacer le contenu du REPL
         getCommand ":q" = pure ()
+        getCommand (':' : 'l' : ' ' : filename) =
+          let a = withFile filename ReadMode parseFile in a >>= mainInternal
+          where
+            parseFile :: Handle -> IO (Map String FctDef)
+            parseFile h = hGetContents h >>= integrateInContext . parserFile
+
+            integrateInContext :: Either ParseError [(String, FctDef)] -> IO (Map String FctDef)
+            integrateInContext (Left err) = context <$ print err
+            integrateInContext (Right defs) = pure $ foldl' (\acc (name, fdef) -> insert name fdef acc) context defs
         getCommand (':' : 'd' : 'e' : ' ' : xs) =
           either print print (parserReplExpr (fmap fst context) xs) >> mainInternal context
         getCommand (':' : 'd' : 'f' : ' ' : xs) =
-          maybe (print $ "no function found with name "  ++ xs) (\(nparams, ex) -> putStrLn $ xs ++ (concat [' ':'*':'p':show x |x <- [0..(nparams-1)]]) ++ " = " ++ show ex) (context !? xs) >> mainInternal context
+          maybe (print $ "no function found with name " ++ xs) (\(nparams, ex) -> putStrLn $ xs ++ (concat [' ' : '*' : 'p' : show x | x <- [0 .. (nparams -1)]]) ++ " = " ++ show ex) (context !? xs) >> mainInternal context
         getCommand (':' : xs) = putStrLn ("Undefined command " ++ xs) >> mainInternal context
         getCommand "" = mainInternal context
         getCommand line = case parseRepl (fmap fst context) line of

@@ -1,6 +1,9 @@
 {-# LANGUAGE InstanceSigs #-}
 
-module RevString (RevString, addRS) where
+module RevString (RevString, addRS, isWhiteSpace) where
+
+import Data.Char (isSpace)
+import Data.Foldable (Foldable (foldl'))
 
 newtype RevString = RevString String
 
@@ -15,6 +18,9 @@ instance Semigroup RevString where
 instance Monoid RevString where
   mempty :: RevString
   mempty = RevString ""
+
+isWhiteSpace :: RevString -> Bool
+isWhiteSpace (RevString rev) = foldl' (\acc c -> acc && isSpace c) True rev
 
 addRS :: Char -> RevString -> RevString
 addRS c (RevString str) = RevString (c : str)

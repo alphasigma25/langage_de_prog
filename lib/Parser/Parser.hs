@@ -6,10 +6,11 @@ module Parser (ParseError, parseRepl, parserReplExpr, parserReplFct, parserFile)
 
 import Data.Bifunctor (Bifunctor (second))
 import Data.Char (isAlpha, isAlphaNum, isDigit, isSpace)
+import Data.Foldable (foldlM)
 import Data.Map (Map, empty, insert, member, size, (!?))
 import Expr (Expr (..), FctDef, Operation (..))
 import Helper (readMaybeInt)
-import RevString (RevString, addRS)
+import RevString (RevString, addRS, isWhiteSpace)
 
 data ParseError
   = IncompleteExpression
@@ -21,6 +22,7 @@ data ParseError
   | WrongToken String String
   | ReservedToken String
   | DuplicatedParamName String
+  | MultipleFctDef String
   | InvalidParamCount Int Int
   | NotFuncError Char
   | NotFunc
@@ -39,6 +41,7 @@ instance Show ParseError where
   show (WrongToken word test) = "Wrong token. Recieved : " ++ word ++ " Expected : " ++ test
   show (ReservedToken str) = "Reserved token used in param of function definition : " ++ str
   show (DuplicatedParamName str) = "Duplicated parameter name : " ++ str
+  show (MultipleFctDef str) = "Multiple function definition with name : " ++ str
   show (InvalidParamCount e r) = "Wrong token. Expected : " ++ show e ++ " Recieved : " ++ show r
   show NotAnError = error "Or maybe not"
 
@@ -48,9 +51,9 @@ type ParsingInfos x = Either ParseError (PartialParse x)
 
 type FctName = String
 
-type FctCtx = Map FctName Int
+type FctCtx = Map FctName Int -- nom fct, nb params
 
-type ParCtx = Map String Int
+type ParCtx = Map String Int -- nom param, index param
 
 type Context = (FctCtx, ParCtx)
 
@@ -74,33 +77,57 @@ testFctName "in" = Left (ReservedToken "in")
 testFctName _ = pure ()
 
 parserReplFct :: FctCtx -> String -> Either ParseError (String, FctDef)
-parserReplFct context l@(c : cs)
-  | isSpace c = parserReplFct context cs
-  | isAlpha c =
-    let (suite, name) = readText l
-     in testFctName name >> parseFct name (context, empty) suite
-  | otherwise = Left $ NotFuncError c
+parserReplFct context l = do
+  (name, suite) <- parseFctName l
+  parseCtx empty suite >>= parseFct name context
   where
-    parseFct :: FctName -> Context -> String -> Either ParseError (String, FctDef)
-    parseFct fctName ctx@(func, params) l2@(x : xs)
-      | isSpace x = parseFct fctName ctx xs
-      | x == '=' =
-        let redefError = (func !? fctName) >>= (\nbParams -> if nbParams == size params then Nothing else Just (InvalidParamCount (size params) nbParams))
-         in let funcDef = parseTerminalExpr (insert fctName (size params) func, params) xs
-             in maybe (fmap (\expr -> (fctName, (size params, expr))) funcDef) Left redefError
-      | isAlpha x =
-        let (suite, newParam) = readText l2
-         in let newContext = insert newParam (size params) params
-             in testFctName newParam >> if member newParam params then Left (DuplicatedParamName newParam) else parseFct fctName (func, newContext) suite
-      | otherwise = Left $ NotFuncError c
-    parseFct _ _ [] = Left NotFunc
-parserReplFct _ [] = Left NotFunc
+    parseFct :: FctName -> FctCtx -> (ParCtx, String) -> Either ParseError (String, FctDef)
+    parseFct fctName func (params, suite) =
+      let redefError = (func !? fctName) >>= (\nbParams -> if nbParams == size params then Nothing else Just (InvalidParamCount (size params) nbParams))
+       in let funcDef = parseTerminalExpr (insert fctName (size params) func, params) suite
+           in maybe (fmap (\expr -> (fctName, (size params, expr))) funcDef) Left redefError
+
+parseCtx :: ParCtx -> String -> Either ParseError (ParCtx, String)
+parseCtx params l2@(x : xs)
+  | isSpace x = parseCtx params xs
+  | x == '=' = Right (params, xs)
+  | isAlpha x =
+    let (suite, newParam) = readText l2
+     in let newContext = insert newParam (size params) params
+         in testFctName newParam >> if member newParam params then Left (DuplicatedParamName newParam) else parseCtx newContext suite
+  | otherwise = Left $ NotFuncError x
+parseCtx _ [] = Left NotFunc
 
 parserReplExpr :: FctCtx -> String -> Either ParseError Expr
 parserReplExpr context = parseTerminalExpr (context, empty)
 
-parserFile :: String -> a -- TODO : Futur
-parserFile = undefined
+mergeTuple :: a -> (b, c) -> (a, b, c)
+mergeTuple a (b, c) = (a, b, c)
+
+parserFile :: String -> Either ParseError [(FctName, FctDef)]
+parserFile str = do
+  let a = filter (not . isWhiteSpace) (foldl accumulate [] str)
+  b <- traverse (parseFctName . show) a
+  c <- traverse (\(name, suite) -> mergeTuple name <$> parseCtx empty suite) b
+  fctctx <- foldlM (\m (name, pctx, _) -> insertInMap name (size pctx) m) empty c
+  traverse (\(name, pctx, suite) -> (name,) . (size pctx,) <$> parseTerminalExpr (fctctx, pctx) suite) c
+  where
+    accumulate :: [RevString] -> Char -> [RevString]
+    accumulate rstr '.' = mempty : rstr
+    accumulate (x : xs) c = addRS c x : xs
+    accumulate [] c = [addRS c mempty]
+
+    insertInMap :: String -> a -> Map String a -> Either ParseError (Map String a)
+    insertInMap name v m = if member name m then Left $ MultipleFctDef name else Right $ insert name v m
+
+parseFctName :: String -> Either ParseError (FctName, String)
+parseFctName l@(c : cs)
+  | isSpace c = parseFctName cs
+  | isAlpha c =
+    let (suite, name) = readText l
+     in (name, suite) <$ testFctName name
+  | otherwise = Left $ NotFuncError c
+parseFctName [] = Left NotFunc
 
 parseTerminalExpr :: Context -> String -> Either ParseError Expr
 parseTerminalExpr context list = parseExpr context list >>= (\(reste, parsed) -> if reste == "" then Right parsed else Left $ Overflow reste)

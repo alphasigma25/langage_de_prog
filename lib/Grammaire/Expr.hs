@@ -29,5 +29,5 @@ instance Show Expr where
   show (ParamDef p) = "*p" ++ show p
   show (Operation op v1 v2) = show v1 ++ ' ' : show op ++ ' ' : show v2
   show Undefined = "???"
-  show (Call name exprs) = name ++ ' ' : foldl (\acc y -> acc ++ ' ' : show y) "" exprs
+  show (Call name exprs) = name ++ foldl (\acc y -> acc ++ ' ' : show y) "" exprs
   show (If cond true false) = "if " ++ show cond ++ " then " ++ show true ++ " else " ++ show false
