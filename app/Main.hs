@@ -1,13 +1,11 @@
 module Main where
 
-import Data.Foldable (foldl')
-import Data.Map (Map, empty, insert, (!?))
+import Control.Monad (foldM)
+import Data.Map (Map, empty, insert, member, (!?))
 import Eval (FctDef, evaluer)
-import Expr (Expr (..), Operation (..))
 import Parser (ParseError, parseRepl, parserFile, parserReplExpr)
 import System.IO (Handle, IOMode (ReadMode), hFlush, hGetContents, stdout, withFile)
 
--- type FctDef = (Int, Expr)
 main :: IO ()
 main = mainInternal empty
   where
@@ -18,8 +16,9 @@ main = mainInternal empty
       line <- getLine
       getCommand line
       where
-        getCommand :: String -> IO () --TODO : ajouter une commande pour effacer le contenu du REPL
+        getCommand :: String -> IO ()
         getCommand ":q" = pure ()
+        getCommand ":del" = main
         getCommand (':' : 'l' : ' ' : filename) =
           let a = withFile filename ReadMode parseFile in a >>= mainInternal
           where
@@ -28,10 +27,21 @@ main = mainInternal empty
 
             integrateInContext :: Either ParseError [(String, FctDef)] -> IO (Map String FctDef)
             integrateInContext (Left err) = context <$ print err
-            integrateInContext (Right defs) = pure $ foldl' (\acc (name, fdef) -> insert name fdef acc) context defs
-        getCommand (':' : 'd' : 'e' : ' ' : xs) =
+            integrateInContext (Right defs) =
+              let mcontext =
+                    foldM
+                      ( \acc (name, fdef) ->
+                          if member name acc then Left name else pure $ insert name fdef acc
+                      )
+                      context
+                      defs
+               in either
+                    (\nameErr -> context <$ print ("Function name collision between file and REPL context : " ++ nameErr))
+                    pure
+                    mcontext
+        getCommand (':' : 'd' : 'e' : 'x' : 'p' : 'r' : ' ' : xs) =
           either print print (parserReplExpr (fmap fst context) xs) >> mainInternal context
-        getCommand (':' : 'd' : 'f' : ' ' : xs) =
+        getCommand (':' : 'd' : 'e' : 'f' : ' ' : xs) =
           maybe (print $ "no function found with name " ++ xs) (\(nparams, ex) -> putStrLn $ xs ++ (concat [' ' : '*' : 'p' : show x | x <- [0 .. (nparams -1)]]) ++ " = " ++ show ex) (context !? xs) >> mainInternal context
         getCommand (':' : xs) = putStrLn ("Undefined command " ++ xs) >> mainInternal context
         getCommand "" = mainInternal context
@@ -39,25 +49,3 @@ main = mainInternal empty
           Left err -> print err >> mainInternal context
           Right (Right (name, fctDef)) -> mainInternal $ insert name fctDef context
           Right (Left ex) -> print (evaluer context ex) >> mainInternal context
-
-file :: String
-file = "f a b = a + b . g a b = a * b"
-
-file2 :: String
-file2 = "f a b = a + b . f a b = a * b"
-
-facths :: Int -> Int
-facths n = if n /= 0 then n * facths n - 1 else 1
-
-fact :: Expr
-fact =
-  If
-    (ParamDef 0)
-    ( Operation
-        Multiplication
-        (ParamDef 0)
-        $ Call
-          "fact"
-          [Operation Addition (Call "fact" []) (Valeur (-1))]
-    )
-    (Valeur 1)
