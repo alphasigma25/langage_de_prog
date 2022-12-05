@@ -19,9 +19,8 @@
   - `repl <file w/ main> exe`   : error
   - `repl`                      : repl w/ lib
 - repl file load
-  - `:l <file w main>`  : exe main + import lib to repl
-  - `:l -safe <file>`   : import lib to repl
-  - `:l <file \w main>` : import lib to repl
+  - `:ls <file w main>`  : exe main
+  - `:l <file>`   : import lib to repl
 - file syntax
   - functions syntax : `[fct_i [nom_params]* = expr.]*`
 

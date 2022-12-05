@@ -1,7 +1,7 @@
 module Main where
 
 import Control.Monad (foldM)
-import Data.Map (Map, empty, insert, member, (!?))
+import Data.Map (Map, empty, fromList, insert, member, (!?))
 import Eval (FctDef, evaluer)
 import Parser (ParseError, parseRepl, parserFile, parserReplExpr)
 import System.IO (Handle, IOMode (ReadMode), hFlush, hGetContents, stdout, withFile)
@@ -39,6 +39,25 @@ main = mainInternal empty
                     (\nameErr -> context <$ print ("Function name collision between file and REPL context : " ++ nameErr))
                     pure
                     mcontext
+        getCommand (':' : 'l' : 's' : ' ' : filename) = withFile filename ReadMode parseFile >> mainInternal context
+          where
+            parseFile :: Handle -> IO ()
+            parseFile h = hGetContents h >>= execute . parserFile
+
+            execute :: Either ParseError [(String, FctDef)] -> IO ()
+            execute (Left err) = print err
+            execute (Right ctx) =
+              let scriptContext = fromList ctx
+               in let mainExpr =
+                        maybe
+                          (Left $ print $ "Error : no main found in file " ++ filename)
+                          Right
+                          (scriptContext !? "main")
+                   in either
+                        id
+                        (\(nbParams, expr) -> if nbParams /= 0 then print "Error : function main should not have parameters" else print $ evaluer scriptContext expr)
+                        mainExpr
+
         getCommand (':' : 'd' : 'e' : 'x' : 'p' : 'r' : ' ' : xs) =
           either print print (parserReplExpr (fmap fst context) xs) >> mainInternal context
         getCommand (':' : 'd' : 'e' : 'f' : ' ' : xs) =
