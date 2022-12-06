@@ -108,7 +108,29 @@ library Grammaire
   -- Base language which the package is written in.
   -- default-language: Haskell2010
 
-executable langprog
+library Compil
+  -- Import common warning flags.
+  import:           params
+
+  -- Modules exported by the library.
+  exposed-modules:
+    Compil
+
+  -- Modules included in this library but not exported.
+  -- other-modules:
+
+  -- LANGUAGE extensions used by modules in this package.
+  -- other-extensions:
+  -- Other library packages from which modules are imported.
+  build-depends:    base, containers
+
+  -- Directories containing source files.
+  hs-source-dirs:   lib/Compil
+
+  -- Base language which the package is written in.
+  -- default-language: Haskell2010
+
+executable repl
   -- Import common warning flags.
   import:           params
 
@@ -126,7 +148,30 @@ executable langprog
     , containers
 
   -- Directories containing source files.
-  hs-source-dirs:   app
+  hs-source-dirs:   interpreteur
+
+  -- Base language which the package is written in.
+  -- default-language: Haskell2010
+
+executable compiler
+  -- Import common warning flags.
+  import:           params
+
+  -- .hs or .lhs file containing the Main module.
+  main-is:          Main.hs
+
+  -- Modules included in this executable, other than Main.
+  -- other-modules:
+  -- LANGUAGE extensions used by modules in this package.
+  -- other-extensions:
+  -- Other library packages from which modules are imported.
+  build-depends:
+    , base
+    , langprog:{Compil}
+    , containers
+
+  -- Directories containing source files.
+  hs-source-dirs:   compilateur
 
   -- Base language which the package is written in.
   -- default-language: Haskell2010
