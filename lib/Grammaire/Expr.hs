@@ -1,6 +1,7 @@
 {-# LANGUAGE InstanceSigs #-}
 
 module Expr where
+
 import Data.Int (Int16)
 import Data.Map (Map, size)
 
@@ -8,21 +9,25 @@ type Condition = Expr
 
 type FctDef = (Int16, Expr)
 
-data Operation = Addition | Soustration | Multiplication | Division
+data Op = Add | Sub | Mul | Div | Mod | RSub | RDiv | RMod
 
-instance Show Operation where
-  show :: Operation -> String
-  show Addition = "+"
-  show Soustration = "-"
-  show Multiplication = "*"
-  show Division = "/"
+instance Show Op where
+  show :: Op -> String
+  show Add = "+"
+  show Sub = "-"
+  show RSub = "rsub"
+  show Mul = "*"
+  show Div = "/"
+  show RDiv = "rdiv"
+  show Mod = "%"
+  show RMod = "rmod"
 
 data Expr
   = Valeur Int16
   | Call String [Expr]
   | ParamDef Int16 -- No du param dans la fonction
   | If Condition Expr Expr
-  | Operation Operation Expr Expr
+  | Operation Op Expr Expr
   | Undefined
 
 instance Show Expr where

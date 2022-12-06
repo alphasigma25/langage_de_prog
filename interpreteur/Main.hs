@@ -57,7 +57,6 @@ main = mainInternal empty
                         id
                         (\(nbParams, expr) -> if nbParams /= 0 then print "Error : function main should not have parameters" else print $ evaluer scriptContext expr)
                         mainExpr
-
         getCommand (':' : 'd' : 'e' : 'x' : 'p' : 'r' : ' ' : xs) =
           either print print (parserReplExpr (fmap fst context) xs) >> mainInternal context
         getCommand (':' : 'd' : 'e' : 'f' : ' ' : xs) =

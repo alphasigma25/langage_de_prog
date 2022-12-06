@@ -122,7 +122,7 @@ library Compil
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
   -- Other library packages from which modules are imported.
-  build-depends:    base, containers
+  build-depends:    base, containers, langprog:Grammaire
 
   -- Directories containing source files.
   hs-source-dirs:   lib/Compil

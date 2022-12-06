@@ -7,11 +7,11 @@ module Parser (ParseError, parseRepl, parserReplExpr, parserReplFct, parserFile)
 import Data.Bifunctor (Bifunctor (second))
 import Data.Char (isAlpha, isAlphaNum, isDigit, isSpace)
 import Data.Foldable (foldlM)
+import Data.Int (Int16)
 import Data.Map (Map, empty, insert, member, size, (!?))
-import Expr (Expr (..), FctDef, Operation (..), int16ToInt, size16)
+import Expr (Expr (..), FctDef, Op (..), int16ToInt, size16)
 import Helper (readMaybeInt)
 import RevString (RevString, addRS, isWhiteSpace)
-import Data.Int (Int16)
 
 data ParseError
   = IncompleteExpression
@@ -138,10 +138,11 @@ parseExpr ctx list = parseRootExpr list >>= parseInfix
   where
     parseInfix :: PartialParse Expr -> ParsingInfos Expr
     parseInfix (x : xs, expr)
-      | x == '+' = fmap (fmap (Operation Addition expr)) (parseExpr ctx xs)
-      | x == '*' = fmap (fmap (Operation Multiplication expr)) (parseExpr ctx xs)
-      | x == '-' = fmap (fmap (Operation Soustration expr)) (parseExpr ctx xs)
-      | x == '/' = fmap (fmap (Operation Division expr)) (parseExpr ctx xs)
+      | x == '+' = fmap (fmap (Operation Add expr)) (parseExpr ctx xs)
+      | x == '*' = fmap (fmap (Operation Mul expr)) (parseExpr ctx xs)
+      | x == '-' = fmap (fmap (Operation Sub expr)) (parseExpr ctx xs)
+      | x == '/' = fmap (fmap (Operation Div expr)) (parseExpr ctx xs)
+      | x == '%' = fmap (fmap (Operation Mod expr)) (parseExpr ctx xs)
       | isSpace x = parseInfix (xs, expr)
     parseInfix source = Right source
 
