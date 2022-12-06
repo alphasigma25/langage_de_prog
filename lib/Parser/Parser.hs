@@ -8,9 +8,10 @@ import Data.Bifunctor (Bifunctor (second))
 import Data.Char (isAlpha, isAlphaNum, isDigit, isSpace)
 import Data.Foldable (foldlM)
 import Data.Map (Map, empty, insert, member, size, (!?))
-import Expr (Expr (..), FctDef, Operation (..))
+import Expr (Expr (..), FctDef, Operation (..), int16ToInt, size16)
 import Helper (readMaybeInt)
 import RevString (RevString, addRS, isWhiteSpace)
+import Data.Int (Int16)
 
 data ParseError
   = IncompleteExpression
@@ -23,7 +24,7 @@ data ParseError
   | ReservedToken String
   | DuplicatedParamName String
   | MultipleFctDef String
-  | InvalidParamCount Int Int
+  | InvalidParamCount Int Int16
   | NotFuncError Char
   | NotFunc
   | NotAnError
@@ -51,13 +52,13 @@ type ParsingInfos x = Either ParseError (PartialParse x)
 
 type FctName = String
 
-type FctCtx = Map FctName Int -- nom fct, nb params
+type FctCtx = Map FctName Int16 -- nom fct, nb params
 
-type ParCtx = Map String Int -- nom param, index param
+type ParCtx = Map String Int16 -- nom param, index param
 
 type Context = (FctCtx, ParCtx)
 
-parseRepl :: Map String Int -> String -> Either ParseError (Either Expr (String, FctDef))
+parseRepl :: Map String Int16 -> String -> Either ParseError (Either Expr (String, FctDef))
 parseRepl ctx str = either testFunc (Right . Right) $ parserReplFct ctx str
   where
     testFunc :: ParseError -> Either ParseError (Either Expr (String, FctDef))
@@ -83,9 +84,9 @@ parserReplFct context l = do
   where
     parseFct :: FctName -> FctCtx -> (ParCtx, String) -> Either ParseError (String, FctDef)
     parseFct fctName func (params, suite) =
-      let redefError = (func !? fctName) >>= (\nbParams -> if nbParams == size params then Nothing else Just (InvalidParamCount (size params) nbParams))
-       in let funcDef = parseTerminalExpr (insert fctName (size params) func, params) suite
-           in maybe (fmap (\expr -> (fctName, (size params, expr))) funcDef) Left redefError
+      let redefError = (func !? fctName) >>= (\nbParams -> if int16ToInt nbParams == size params then Nothing else Just (InvalidParamCount (size params) nbParams))
+       in let funcDef = parseTerminalExpr (insert fctName (size16 params) func, params) suite
+           in maybe (fmap (\expr -> (fctName, (size16 params, expr))) funcDef) Left redefError
 
 parseCtx :: ParCtx -> String -> Either ParseError (ParCtx, String)
 parseCtx params l2@(x : xs)
@@ -93,7 +94,7 @@ parseCtx params l2@(x : xs)
   | x == '=' = Right (params, xs)
   | isAlpha x =
     let (suite, newParam) = readText l2
-     in let newContext = insert newParam (size params) params
+     in let newContext = insert newParam (size16 params) params
          in testFctName newParam >> if member newParam params then Left (DuplicatedParamName newParam) else parseCtx newContext suite
   | otherwise = Left $ NotFuncError x
 parseCtx _ [] = Left NotFunc
@@ -109,8 +110,8 @@ parserFile str = do
   let a = filter (not . isWhiteSpace) (foldl accumulate [] str)
   b <- traverse (parseFctName . show) a
   c <- traverse (\(name, suite) -> mergeTuple name <$> parseCtx empty suite) b
-  fctctx <- foldlM (\m (name, pctx, _) -> insertInMap name (size pctx) m) empty c
-  traverse (\(name, pctx, suite) -> (name,) . (size pctx,) <$> parseTerminalExpr (fctctx, pctx) suite) c
+  fctctx <- foldlM (\m (name, pctx, _) -> insertInMap name (size16 pctx) m) empty c
+  traverse (\(name, pctx, suite) -> (name,) . (size16 pctx,) <$> parseTerminalExpr (fctctx, pctx) suite) c
   where
     accumulate :: [RevString] -> Char -> [RevString]
     accumulate rstr '.' = mempty : rstr
@@ -165,7 +166,7 @@ parseExpr ctx list = parseRootExpr list >>= parseInfix
       | otherwise =
         let callExpr = do
               nbParams <- maybe (Left $ UnrecognisedToken mot) Right $ fst ctx !? mot
-              let params = (reverse <$>) <$> parserNParam nbParams suite []
+              let params = (reverse <$>) <$> parserNParam (int16ToInt nbParams) suite []
               fmap (second (Call mot)) params
          in maybe callExpr (\x -> Right (suite, ParamDef x)) (snd ctx !? mot)
       where
@@ -187,10 +188,10 @@ validate toparse test =
   let (suite, mot) = readText toparse
    in if mot == test then Right (suite, ()) else Left (WrongToken mot test)
 
-parseDigit :: String -> ParsingInfos Int
+parseDigit :: String -> ParsingInfos Int16
 parseDigit = parseDigitInternal mempty
   where
-    parseDigitInternal :: RevString -> String -> ParsingInfos Int
+    parseDigitInternal :: RevString -> String -> ParsingInfos Int16
     parseDigitInternal digits (x : xs)
       | isDigit x = parseDigitInternal (addRS x digits) xs
     parseDigitInternal digits list =

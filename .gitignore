@@ -5,3 +5,5 @@ vm/vm/x64/Debug/vm.tlog/link.write.1.tlog
 vm/vm/x64/Debug/vm.tlog/link.command.1.tlog
 vm/vm/x64/Debug/
 vm/vm/.vs/
+*.asc
+~$instructions.xlsx
