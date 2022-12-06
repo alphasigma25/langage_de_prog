@@ -12,7 +12,7 @@ using namespace std;
 
 int main()
 {
-	int16_t registres[8];
+	int16_t registres[8]{};
 
 	int16_t ram[std::numeric_limits<int16_t>::max()];
 
@@ -35,21 +35,53 @@ int main()
 
 	while (true) {
 		int16_t opcode = (ram[ip]) >> 13;
-		int16_t reg;
+		int16_t spec = (ram[ip] & 0b1110000000000) >> 10;
+		int16_t imm = (ram[ip]) & 0b1000000000 >> 9;
+		int16_t rd = (ram[ip] & 0b111000000) >> 6;
+		int16_t rs2 = (ram[ip] & 0b111000) >> 3;
+		int16_t rs1 = ram[ip] & 0b111;
+		int16_t s1 = imm ? ram[ip + 1] : registres[rs1];
 
 		switch (opcode) {
 		case 0:
-			reg = ram[ip] & 0b111;
-			return registres[reg];
+			return s1;
 		case 1:
-			reg = (ram[ip] & 0b111000000) >> 6;
-			registres[reg] = ram[ip + 1];
+			registres[rd] = s1;
+			break;
+		case 2:
+			switch (spec) {
+			case 0:
+				registres[rd] = registres[rs2] + s1;
+				break;
+			case 1:
+				registres[rd] = registres[rs2] - s1;
+				break;
+			case 2:
+				registres[rd] = registres[rs2] * s1;
+				break;
+			case 3:
+				registres[rd] = registres[rs2] / s1;
+				break;
+			case 4:
+				registres[rd] = registres[rs2] % s1;
+				break;
+			case 5:
+				registres[rd] = s1 - registres[rs2];
+				break;
+			case 6:
+				registres[rd] = s1 % registres[rs2];
+				break;
+			case 7:
+				registres[rd] = s1 / registres[rs2];
+				break;
+			}
+
 			break;
 		default:
 			break;
 		}
 
-		ip += 2;
+		ip += imm ? 2 : 1;
 	}
 	return 0;
 }
