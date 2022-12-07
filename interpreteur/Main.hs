@@ -60,7 +60,11 @@ main = mainInternal empty
         getCommand (':' : 'd' : 'e' : 'x' : 'p' : 'r' : ' ' : xs) =
           either print print (parserReplExpr (fmap fst context) xs) >> mainInternal context
         getCommand (':' : 'd' : 'e' : 'f' : ' ' : xs) =
-          maybe (print $ "no function found with name " ++ xs) (\(nparams, ex) -> putStrLn $ xs ++ (concat [' ' : '*' : 'p' : show x | x <- [0 .. (nparams -1)]]) ++ " = " ++ show ex) (context !? xs) >> mainInternal context
+          maybe
+            (print $ "no function found with name " ++ xs)
+            (\(nparams, ex) -> putStrLn $ xs ++ (concat [' ' : '*' : 'p' : show x | x <- [0 .. (nparams -1)]]) ++ " = " ++ show ex)
+            (context !? xs)
+            >> mainInternal context
         getCommand (':' : xs) = putStrLn ("Undefined command " ++ xs) >> mainInternal context
         getCommand "" = mainInternal context
         getCommand line = case parseRepl (fmap fst context) line of

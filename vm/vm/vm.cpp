@@ -36,7 +36,7 @@ int main()
 	while (true) {
 		int16_t opcode = (ram[ip]) >> 13;
 		int16_t spec = (ram[ip] & 0b1110000000000) >> 10;
-		int16_t imm = (ram[ip]) & 0b1000000000 >> 9;
+		int16_t imm = (ram[ip] & 0b1000000000) >> 9;
 		int16_t rd = (ram[ip] & 0b111000000) >> 6;
 		int16_t rs2 = (ram[ip] & 0b111000) >> 3;
 		int16_t rs1 = ram[ip] & 0b111;

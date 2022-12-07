@@ -3,6 +3,7 @@
 module Compil where
 
 import Data.Bits (shiftL)
+import Data.ByteString.Builder (Builder, int16LE)
 import Data.Int (Int16)
 import Expr (Op (..))
 
@@ -66,3 +67,7 @@ convertToBin ins = (\(x, y) -> (x + immBit, y)) <$> convertToBinInternal ins
     convertToBinInternal (CONST (Constant c) dest) = Right (genOpCode 1 + genRd dest, c)
     convertToBinInternal (OP op (Registre r1) r2 dest) = Left $ getOpNum op + genOpCode 2 + genRd dest + genR2 r2 + genR1 r1
     convertToBinInternal (OP op (Constant c) r dest) = Right (getOpNum op + genOpCode 2 + genRd dest + genR2 r, c)
+
+programToBin :: [Instruction] -> Builder -- builder = monoïd
+programToBin instr =
+  mconcat $ fmap (either int16LE (\(x1, x2) -> int16LE x1 <> int16LE x2) . convertToBin) instr
