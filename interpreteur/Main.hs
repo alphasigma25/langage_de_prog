@@ -20,7 +20,7 @@ main = mainInternal empty
         getCommand ":q" = pure ()
         getCommand ":del" = main
         getCommand (':' : 'l' : ' ' : filename) =
-          let a = withFile filename ReadMode parseFile in a >>= mainInternal
+          let fctDefGetter = withFile filename ReadMode parseFile in fctDefGetter >>= mainInternal
           where
             parseFile :: Handle -> IO (Map String FctDef)
             parseFile h = hGetContents h >>= integrateInContext . parserFile
