@@ -12,19 +12,32 @@ import Parser (ParseError, parserFile)
 import RegToBinary (Instruction (..), Reg, Src1 (Constant), programToBin)
 import Register8 (Reg8)
 import System.IO (Handle, IOMode (ReadMode, WriteMode), hGetContents, withFile)
+import Data.Foldable (traverse_)
 
 writeInstr :: Reg regType => [Instruction regType] -> IO ()
 writeInstr prog = withFile "result.asc" WriteMode (`hPutBuilder` programToBin prog)
 
 parseFile :: String -> IO ()
-parseFile filename = withFile filename ReadMode (parseContent >=> transform)
+parseFile filename = withFile filename ReadMode parseContent
   where
-    parseContent :: Handle -> IO (Either ParseError [(String, FctDef)])
-    parseContent h = parserFile <$> hGetContents h
+    parseContent :: Handle -> IO ()
+    parseContent h = do
+      content <- hGetContents h
+      putStrLn "Source code"
+      putStrLn content
+      putStrLn ""
+      transform $ parserFile content
 
 transform :: Either ParseError [(String, FctDef)] -> IO ()
 transform (Left err) = print err
-transform (Right code) = either print writeInstr $ compile code
+transform (Right code) = do
+  putStrLn "AST"
+  traverse_ prettyPrint code
+  let res = compile code
+  either print writeInstr res
+  where
+    prettyPrint :: (String, FctDef) -> IO()
+    prettyPrint (name, (nparams, ex)) = putStrLn $ name ++ (concat [' ' : '*' : 'p' : show x | x <- [0 .. (nparams -1)]]) ++ " = " ++ show ex
 
 compile :: [(String, FctDef)] -> Either CompileError [Instruction Reg8]
 compile = exprToLogicalInstr . fromList >=> compile2
