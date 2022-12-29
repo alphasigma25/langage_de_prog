@@ -2,7 +2,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-module Parser (ParseError, parseRepl, parserReplExpr, parserReplFct, parserFile) where
+module Parser (ParseError, parseRepl, parserReplExpr, parserReplFct, parserFile, TestFctExpr (..)) where
 
 import Data.Bifunctor (Bifunctor (second))
 import Data.Char (isAlpha, isAlphaNum, isDigit, isSpace)
@@ -58,16 +58,19 @@ type ParCtx = Map String Int16 -- nom param, index param
 
 type Context = (FctCtx, ParCtx)
 
-parseRepl :: Map String Int16 -> String -> Either ParseError (Either Expr (String, FctDef))
-parseRepl ctx str = either testFunc (Right . Right) $ parserReplFct ctx str
-  where
-    testFunc :: ParseError -> Either ParseError (Either Expr (String, FctDef))
-    testFunc (NotFuncError _) = parseExprInstead
-    testFunc NotFunc = parseExprInstead
-    testFunc err = Left err
+data TestFctExpr = Err ParseError | Expr Expr | Fct (FctName, FctDef)
 
-    parseExprInstead :: Either ParseError (Either Expr (String, FctDef))
-    parseExprInstead = Left <$> parserReplExpr ctx str
+parseRepl :: Map String Int16 -> String -> TestFctExpr
+parseRepl ctx str = either testFunc Fct $ parserReplFct ctx str
+  where
+    testFunc :: ParseError -> TestFctExpr
+    testFunc (NotFuncError _) = parseExprInstead
+    testFunc (ReservedToken _) = parseExprInstead
+    testFunc NotFunc = parseExprInstead
+    testFunc err = Err err
+
+    parseExprInstead :: TestFctExpr
+    parseExprInstead = either Err Expr $ parserReplExpr ctx str
 
 testFctName :: String -> Either ParseError ()
 testFctName "if" = Left (ReservedToken "if")

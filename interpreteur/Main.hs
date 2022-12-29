@@ -3,7 +3,7 @@ module Main where
 import Control.Monad (foldM)
 import Data.Map (Map, empty, fromList, insert, member, (!?))
 import Eval (FctDef, evaluer)
-import Parser (ParseError, parseRepl, parserFile, parserReplExpr)
+import Parser (ParseError, parseRepl, parserFile, parserReplExpr, TestFctExpr(..))
 import System.IO (Handle, IOMode (ReadMode), hFlush, hGetContents, stdout, withFile)
 
 main :: IO ()
@@ -68,6 +68,6 @@ main = mainInternal empty
         getCommand (':' : xs) = putStrLn ("Undefined command " ++ xs) >> mainInternal context
         getCommand "" = mainInternal context
         getCommand line = case parseRepl (fmap fst context) line of
-          Left err -> print err >> mainInternal context
-          Right (Right (name, fctDef)) -> mainInternal $ insert name fctDef context
-          Right (Left ex) -> print (evaluer context ex) >> mainInternal context
+          Err err -> print err >> mainInternal context
+          Fct (name, fctDef) -> mainInternal $ insert name fctDef context
+          Expr ex -> print (evaluer context ex) >> mainInternal context
