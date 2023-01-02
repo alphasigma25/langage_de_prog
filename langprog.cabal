@@ -114,7 +114,7 @@ library Compil
 
   -- Modules exported by the library.
   exposed-modules:
-    RegToBinary, Register8, Register4, Register2, CompileError, ExprToLogical
+    RegToBinary, Registers, CompileError, ExprToLogical
 
   -- Modules included in this library but not exported.
   -- other-modules:

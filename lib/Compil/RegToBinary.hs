@@ -1,10 +1,11 @@
 {-# LANGUAGE BinaryLiterals #-}
 
-module RegToBinary (Reg (getRegNum), programToBin, Instruction (..), Src1 (..)) where
+module RegToBinary (programToBin, Instruction (..), Src1 (..)) where
 
 import Data.Bits (shiftL)
 import Data.ByteString.Builder (Builder, int16LE)
 import Data.Int (Int16)
+import Registers (Reg, getRegNum)
 import Expr (Op (..))
 
 getOpNum :: Op -> Int16
@@ -19,9 +20,6 @@ getOpNum a = shiftL (getOpNumInternal a) 10
     getOpNumInternal RSub = 5
     getOpNumInternal RMod = 6
     getOpNumInternal RDiv = 7
-
-class Reg reg where
-  getRegNum :: reg -> Int16
 
 data Src1 regType = Registre regType | Constant Int16
 
