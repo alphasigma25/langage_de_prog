@@ -25,6 +25,10 @@ class Reg reg where
 
 data Src1 regType = Registre regType | Constant Int16
 
+instance Show regType => Show (Src1 regType) where
+  show (Registre regType) = show regType
+  show (Constant val) = show val
+
 data Instruction regType
   = STOP (Src1 regType)
   | CONST (Src1 regType) regType

@@ -3,16 +3,15 @@
 module Main where
 
 import CompileError (CompileError)
-import Control.Monad ((>=>))
 import Data.ByteString.Builder (hPutBuilder)
-import Data.Map (Map, fromList)
+import Data.Map (Map, fromList, foldrWithKey)
 import Expr (FctDef)
 import ExprToLogical (LogicalInstr, exprToLogicalInstr, LogReg)
 import Parser (ParseError, parserFile)
 import RegToBinary (Instruction (..), Reg, Src1 (Constant), programToBin)
 import Register8 (Reg8)
 import System.IO (Handle, IOMode (ReadMode, WriteMode), hGetContents, withFile)
-import Data.Foldable (traverse_)
+import Data.Foldable (foldl')
 
 writeInstr :: Reg regType => [Instruction regType] -> IO ()
 writeInstr prog = withFile "result.asc" WriteMode (`hPutBuilder` programToBin prog)
@@ -30,20 +29,32 @@ parseFile filename = withFile filename ReadMode parseContent
 
 transform :: Either ParseError [(String, FctDef)] -> IO ()
 transform (Left err) = print err
-transform (Right code) = do
+transform (Right code) = do -- TODO monad transformer
   putStrLn "AST"
-  traverse_ prettyPrint code
-  let res = compile code
-  either print writeInstr res
+  putStrLn $ concatMap formatCode code
+  putStrLn ""
+  let logicalInstrMap = exprToLogicalInstr $ fromList code
+  either print transform2 logicalInstrMap
   where
-    prettyPrint :: (String, FctDef) -> IO()
-    prettyPrint (name, (nparams, ex)) = putStrLn $ name ++ (concat [' ' : '*' : 'p' : show x | x <- [0 .. (nparams -1)]]) ++ " = " ++ show ex
+    formatCode :: (String, FctDef) -> String
+    formatCode (name, (nparams, ex)) = name ++ (concat [' ' : '*' : 'p' : show x | x <- [0 .. (nparams -1)]]) ++ " = " ++ show ex ++ "\n"
 
-compile :: [(String, FctDef)] -> Either CompileError [Instruction Reg8]
-compile = exprToLogicalInstr . fromList >=> compile2
+    transform2 :: Map String ([LogicalInstr], LogReg) -> IO ()
+    transform2 logicalInstrMap = do
+      putStrLn "Logical Instructions"
+      putStrLn $ foldrWithKey (\k x acc -> acc ++ formatLogicalInstr k x ++ "\n") "" logicalInstrMap
+      putStrLn ""
+      let res = compile logicalInstrMap
+      either print writeInstr res
 
-compile2 :: Map String ([LogicalInstr], LogReg) -> Either CompileError [Instruction Reg8]
-compile2 _ = Right [STOP $ Constant 0]
+      where
+        formatLogicalInstr :: String -> ([LogicalInstr], LogReg) -> String
+        formatLogicalInstr fname (instr, lreg) =
+          let instructions = foldl' (\acc x -> acc ++ '\t' : show x ++ "\n") "" instr
+            in fname ++ " :\n" ++ instructions ++ '\t' : "RET " ++ show lreg
+
+compile :: Map String ([LogicalInstr], LogReg) -> Either CompileError [Instruction Reg8]
+compile _ = Right [STOP $ Constant 0]
 
 main :: IO ()
 main = parseFile "test.asc"
